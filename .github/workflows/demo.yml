@@ -31,14 +31,9 @@ jobs:
     defaults:
       run:
         working-directory: ${{ github.event.inputs.working_directory }}
-    
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 
-
-        
-      - name: Internet Connectivity Check
-        run: curl -v https://registry.terraform.io
+        uses: actions/checkout@v4      
         
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -46,23 +41,11 @@ jobs:
           terraform_version: "1.9.0"
         
       - name: Terraform Init
-        run: |
-          # Clean up existing terraform configuration and lock files
+        run: |        
           rm -rf .terraform
           rm -f .terraform.lock.hcl
           # Initialize terraform in the correct directory
           terraform init
-        env:
-          # Using the correct secret without extra syntax
+        env:       
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
-
-      - name: Terraform Plan
-        run: terraform plan -input=false
-        env:
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
-
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform apply -auto-approve -input=false
-        env:
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+          run: terraform plan -input=false -var="tfe_token=${{ secrets.TFE_TOKEN }}"
