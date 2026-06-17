@@ -38,6 +38,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        
+      - name: List directory contents
+        run: ls -R
 
       - name: Terraform Init
         run: terraform init
