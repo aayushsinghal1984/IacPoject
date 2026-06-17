@@ -1,4 +1,4 @@
-name: 'New demo '
+name: 'New demo'
 
 on:
   workflow_dispatch:
@@ -25,35 +25,33 @@ permissions:
 
 jobs:
   terraform:
-    name: 'Terraform'
+    name: 'image download'
     runs-on: self-hosted
-    # Official Terraform image use kar rahe hain
     container:
       image: hashicorp/terraform:latest
-    
-    defaults:
-      run:
-        working-directory: ./infra
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4    
         
       - name: List directory contents
         run: ls -R
-
+        working-directory: ${{ github.workspace }} 
+        
       - name: Terraform Init
+        working-directory: ${{ github.event.inputs.working_directory }} 
         run: terraform init
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Plan
+        working-directory: ${{ github.event.inputs.working_directory }}
         run: terraform plan -input=false
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: ${{ github.event.inputs.working_directory }}
         run: terraform apply -auto-approve -input=false
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
