@@ -44,10 +44,12 @@ jobs:
           SECRET_VAL: ${{ secrets.TF_API_TOKEN }}
         
       - name: Terraform Init
-        working-directory: ${{ github.event.inputs.working_directory }} 
-        run: terraform init
+        run: |
+          rm -rf .terraform
+          rm -f .terraform.lock.hcl
+          terraform init
         env:
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}}
 
       - name: Terraform Plan
         working-directory: ${{ github.event.inputs.working_directory }}
