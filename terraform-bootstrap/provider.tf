@@ -3,7 +3,7 @@ terraform {
   cloud {
     organization = "UL-ULSE"
     workspaces {
-      name = "bootstrap-workspace"
+      name = "infra-workspace"
     }
   }
 
