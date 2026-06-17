@@ -1,13 +1,27 @@
 name: 'New demo '
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+      working_directory:
+        description: "Terraform working directory (relative to repo root)"
+        required: false
+        default: "."
+        type: string
 
 permissions:
+  id-token: write
   contents: read
+  pull-requests: write
+  actions: read
 
 jobs:
   terraform:
