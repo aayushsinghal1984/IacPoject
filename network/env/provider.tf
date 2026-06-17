@@ -4,7 +4,9 @@ terraform {
   cloud {
     organization = "UL-ULSE"
   
-    workspaces { }
+    workspaces {
+      tags = ["terraform-demo"]
+    }
   }
 
   required_providers {
