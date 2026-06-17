@@ -7,48 +7,36 @@ on:
     branches: [ "main" ]
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
   terraform:
+    name: 'Terraform'
     runs-on: self-hosted
-    # Agar aapka Terraform code kisi specific folder mein hai, 
-    # toh yahan 'defaults' ka use karein:
+    # Official Terraform image use kar rahe hain
+    container:
+      image: hashicorp/terraform:latest
+    
     defaults:
       run:
-        working-directory: ./infra  # Yahan apni directory ka path dein
-        
-    container:
-      image: mcr.microsoft.com/azure-cli:latest
-    
-    env:
-      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      ARM_USE_OIDC: true
+        working-directory: ./infra
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install Terraform
-        run: |
-          apk add --no-cache terraform
-
-      - name: 'Azure Login'
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Init
         run: terraform init
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Plan
         run: terraform plan -input=false
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
