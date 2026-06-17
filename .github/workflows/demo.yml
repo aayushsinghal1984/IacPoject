@@ -25,41 +25,37 @@ permissions:
 
 jobs:
   terraform:
-    name: 'image download'
+    name: 'create workspace'
     runs-on: self-hosted
     container:
       image: hashicorp/terraform:1.9.0
+    # Setting defaults to ensure all steps run in the specified directory
+    defaults:
+      run:
+        working-directory: ${{ github.event.inputs.working_directory }}
+    
     steps:
       - name: Checkout
-        uses: actions/checkout@v4    
-        
-      - name: Debug Secret
-        run: |
-          if [ -z "${{ secrets.TF_API_TOKEN }}" ]; then
-            echo "Secret is empty!"
-          else
-            echo "Secret is loaded (length: ${#SECRET_VAL})"
-          fi
-        env:
-          SECRET_VAL: ${{ secrets.TF_API_TOKEN }}
+        uses: actions/checkout@v4   
         
       - name: Terraform Init
         run: |
+          # Clean up existing terraform configuration and lock files
           rm -rf .terraform
           rm -f .terraform.lock.hcl
+          # Initialize terraform in the correct directory
           terraform init
         env:
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}}
+          # Using the correct secret without extra syntax
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Plan
-        working-directory: ${{ github.event.inputs.working_directory }}
         run: terraform plan -input=false
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        working-directory: ${{ github.event.inputs.working_directory }}
         run: terraform apply -auto-approve -input=false
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
