@@ -33,9 +33,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4    
         
-      - name: List directory contents
-        run: ls -R
-        working-directory: ${{ github.workspace }} 
+      - name: Debug Secret
+        run: |
+          if [ -z "${{ secrets.TF_API_TOKEN }}" ]; then
+            echo "Secret is empty!"
+          else
+            echo "Secret is loaded (length: ${#SECRET_VAL})"
+          fi
+        env:
+          SECRET_VAL: ${{ secrets.TF_API_TOKEN }}
         
       - name: Terraform Init
         working-directory: ${{ github.event.inputs.working_directory }} 
