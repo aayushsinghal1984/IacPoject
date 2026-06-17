@@ -13,7 +13,12 @@ permissions:
 jobs:
   terraform:
     runs-on: self-hosted
-
+    # Agar aapka Terraform code kisi specific folder mein hai, 
+    # toh yahan 'defaults' ka use karein:
+    defaults:
+      run:
+        working-directory: ./infra  # Yahan apni directory ka path dein
+        
     container:
       image: mcr.microsoft.com/azure-cli:latest
     
@@ -26,7 +31,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
 
       - name: Install Terraform
         run: |
