@@ -29,6 +29,8 @@ jobs:
     runs-on: self-hosted
     container:
       image: hashicorp/terraform:1.9.0
+      env:
+        https_proxy: http://aapka-proxy-server:port
     # Setting defaults to ensure all steps run in the specified directory
     defaults:
       run:
@@ -36,7 +38,12 @@ jobs:
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v4   
+        uses: actions/checkout@v4 
+
+        
+      - name: Internet Connectivity Check
+        run: curl -v https://registry.terraform.io
+  
         
       - name: Terraform Init
         run: |
