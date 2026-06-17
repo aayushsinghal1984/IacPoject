@@ -29,9 +29,6 @@ jobs:
     runs-on: self-hosted
     container:
       image: hashicorp/terraform:1.9.0
-      env:
-        https_proxy: http://aapka-proxy-server:port
-    # Setting defaults to ensure all steps run in the specified directory
     defaults:
       run:
         working-directory: ${{ github.event.inputs.working_directory }}
