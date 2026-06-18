@@ -3,7 +3,7 @@ terraform {
   cloud {
     organization = "UL-ULSE"
     workspaces {
-      prefix = "infra-"
+      name = "infra-"
     }
   }
 
