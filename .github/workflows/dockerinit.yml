@@ -12,7 +12,7 @@ on:
           - qa
           - prod
       working_directory:
-        description: "Terraform working directory (relative to repo root)"
+        description: "Terraform working directory"
         required: false
         default: "."
         type: string
@@ -20,30 +20,43 @@ on:
 permissions:
   id-token: write
   contents: read
-  pull-requests: write
-  actions: read
 
 jobs:
-  init:
-    name: "Init"
+  terraform-plan:
+    name: "Terraform Plan"
     runs-on: ubuntu-latest
+    
     container:
-      image: hashicorp/terraform:1.9.0    
-
+      image: hashicorp/terraform:1.9.0
     defaults:
       run:
         working-directory: ${{ inputs.working_directory }}
+        
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      TF_WORKSPACE: ${{ inputs.environment }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4              
-
+        uses: actions/checkout@v4
+        
       - name: Debug Folder
         run: |
           echo "Scanning directory: ${{ inputs.working_directory }}"
-          ls -R 
+          ls -R
           
       - name: Terraform Init
         run: terraform init -input=false
-        env:
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-${{ inputs.environment }}
+          path: ${{ inputs.working_directory }}/tfplan
+          retention-days: 1
