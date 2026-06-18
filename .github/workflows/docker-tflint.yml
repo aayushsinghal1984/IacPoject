@@ -37,17 +37,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: TFLint Init
-        run: tflint --init
-
       - name: TFLint Run
-        run: |      
-          tflint --format compact --recursive > ${{ github.workspace }}/${{ inputs.working_directory }}/tflint-report.txt
+        run: |
+          tflint --format compact --recursive > tflint-report.txt
+          
+      - name: Debug and List Files
+        run: |
+            echo "Current Directory: $(pwd)"
 
       - name: Upload TFLint report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tflint-report-${{ inputs.environment }}
-          path: ${{ inputs.working_directory }}/tflint-report.txt
-          if-no-files-found: error 
+          path: ./${{ inputs.working_directory }}/tflint-report.txt
+          if-no-files-found: error
