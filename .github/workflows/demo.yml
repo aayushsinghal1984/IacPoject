@@ -28,7 +28,7 @@ jobs:
     name: "Init"
     runs-on: ubuntu-latest
     container:
-      image: hashicorp/terraform:1.9.0   
+      image: hashicorp/terraform:1.9.0    
 
     defaults:
       run:
@@ -42,10 +42,21 @@ jobs:
         run: |
           echo "Scanning directory: ${{ inputs.working_directory }}"
           ls -R 
-          
-      - name: Terraform Init
+
+      - name: Create Backend Config
         run: |
-          terraform init -input=false \
-          -backend-config="workspaces.name=${{ inputs.environment }}"
+          cat <<EOF > backend.tf
+          terraform {
+            cloud {
+              organization = "UL-ULSE"
+              workspaces {
+                name = "${{ inputs.environment }}"
+              }
+            }
+          }
+          EOF      
+      
+      - name: Terraform Init
+        run: terraform init -input=false
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TFE_API_TOKEN }}
