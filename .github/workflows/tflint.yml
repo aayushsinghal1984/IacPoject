@@ -1,15 +1,27 @@
 name: "TFLint"
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       environment:
+        description: "Target deployment environment"
         required: true
-        type: string
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
       working_directory:
+        description: "Terraform working directory (relative to repo root)"
         required: false
-        type: string
         default: "."
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  actions: read
 
 jobs:
   tflint:
