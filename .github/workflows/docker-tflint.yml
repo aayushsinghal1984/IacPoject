@@ -24,12 +24,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+
+      - name: Debug Workspace Structure
+        run: |
+          echo "Current Path: $(pwd)"
+          echo "Files in Workspace:"
+          ls -R 
+          echo "Terraform files detected:"
+          find . -name "*.tf"
+
       - name: TFLint Init and Run
         run: |
           tflint --init
-          tflint --format compact --recursive > tflint-report.txt
-          echo "--- Report Contents ---"
-          cat tflint-report.txt
+          tflint --verbose --format compact --recursive > tflint-report.txt
+
+
+      - name: Debug TFLint Output
+        run: |
+          echo "--- TFLint Report Summary ---"
+          if [ -s tflint-report.txt ]; then
+            echo "Report generated successfully."
+            cat tflint-report.txt
+          else
+            echo "Warning: Report file is empty (0 bytes)."
+          fi
 
       - name: Upload TFLint report
         if: always()
