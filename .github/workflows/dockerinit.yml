@@ -40,6 +40,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
+      - name: List Files (Debug)
+        run: ls -R
+        
       - name: Debug Folder
         run: |
           echo "Scanning directory: ${{ inputs.working_directory }}"
