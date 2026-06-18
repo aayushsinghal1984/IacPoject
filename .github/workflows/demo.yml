@@ -1,4 +1,4 @@
-name: 'New demo'
+name: 'Terraform Workflow'
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ on:
           - qa
           - prod
       working_directory:
-        description: "Terraform working directory (relative to repo root)"
+        description: "Terraform working directory"
         required: false
         default: "."
         type: string
@@ -24,26 +24,59 @@ permissions:
   actions: read
 
 jobs:
-  terraform:
-    name: 'create workspace'
+  terraform_plan:
+    name: 'Plan'
     runs-on: ubuntu-latest
-    
     container:
       image: hashicorp/terraform:1.9.0
-
     defaults:
       run:
         working-directory: ${{ github.event.inputs.working_directory }}
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      TF_WORKSPACE: "infra-${{ github.event.inputs.environment }}"
+    outputs:
+      plan_status: success
     steps:
       - name: Checkout
-        uses: actions/checkout@v4           
-        
+        uses: actions/checkout@v4
+
       - name: Terraform Init
-        run: |        
-          rm -rf .terraform
-          rm -f .terraform.lock.hcl
-          # Initialize terraform in the correct directory
-          terraform init
-        env:       
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
-          run: terraform plan -input=false -var="tfe_token=${{ secrets.TFE_TOKEN }}"
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan -var="tfe_token=${{ secrets.TFE_TOKEN }}"
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ github.event.inputs.working_directory }}/tfplan
+
+  terraform_apply:
+    name: 'Apply'
+    needs: terraform_plan
+    runs-on: ubuntu-latest
+    environment: deployment
+    container:
+      image: hashicorp/terraform:1.9.0
+    defaults:
+      run:
+        working-directory: ${{ github.event.inputs.working_directory }}
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      TF_WORKSPACE: "infra-${{ github.event.inputs.environment }}"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -input=false tfplan
