@@ -25,9 +25,10 @@ jobs:
   terraform-plan:
     name: "Terraform Plan"
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }} 
     
     container:
-      image: hashicorp/terraform:1.9.0
+      image: hashicorp/terraform:1.9.0      
     defaults:
       run:
         working-directory: ${{ inputs.working_directory }}
@@ -36,18 +37,15 @@ jobs:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       TF_WORKSPACE: ${{ inputs.environment }}
 
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
-      - name: List Files (Debug)
-        run: ls -R
-        
-      - name: Debug Folder
-        run: |
-          echo "Scanning directory: ${{ inputs.working_directory }}"
-          ls -R
-          
+      
       - name: Terraform Init
         run: terraform init -input=false
 
@@ -56,6 +54,15 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan -input=false -out=tfplan
+        
+      - name: Generate Plan Summary
+        if: always()
+        run: |
+          echo "### Terraform Plan Summary for ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo '```hcl' >> $GITHUB_STEP_SUMMARY       
+          head -c 2000 plan_summary.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "Link to workspace: https://app.terraform.io/app/UL-ULSE/${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
