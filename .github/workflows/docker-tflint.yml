@@ -40,6 +40,9 @@ jobs:
       - name: TFLint Run
         run: |
           tflint --format compact --recursive > tflint-report.txt
+          echo "File status:"
+          ls -l tflint-report.txt
+          cat tflint-report.txt
           
       - name: Debug and List Files
         run: |
