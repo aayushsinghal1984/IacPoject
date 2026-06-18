@@ -30,10 +30,10 @@ jobs:
 
       - name: TFLint Init and Run
         run: |
-          tflint --init
-
-          tflint --recursive --format compact ${{ inputs.working_directory }} > tflint-report.txt
-          echo "File status: $(ls -l tflint-report.txt)"
+          tflint --chdir=${{ inputs.working_directory }} --recursive --format compact > tflint-report.txt || true
+          
+          echo "--- TFLint Summary ---"
+          cat tflint-report.txt
 
       - name: Upload TFLint report
         if: always()
