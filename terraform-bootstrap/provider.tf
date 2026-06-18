@@ -3,7 +3,7 @@ terraform {
   cloud {
     organization = "UL-ULSE"
     workspaces {
-      
+    name = var.workspace_name
     }
   }
 
