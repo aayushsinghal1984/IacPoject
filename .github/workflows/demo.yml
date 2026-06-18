@@ -34,7 +34,7 @@ jobs:
         working-directory: ${{ github.event.inputs.working_directory }}
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
-      TF_WORKSPACE: "infra-${{ github.event.inputs.environment }}"
+      TF_VAR_workspace_name: ${{ inputs.environment }}
     outputs:
       plan_status: success
     steps:
