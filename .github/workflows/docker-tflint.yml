@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/terraform-linters/tflint:latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
     
     steps:
       - name: Checkout
@@ -25,12 +28,13 @@ jobs:
         run: |
           tflint --init
           tflint --format compact --recursive > tflint-report.txt
-        working-directory: ${{ inputs.working_directory }}
+          echo "--- Report Contents ---"
+          cat tflint-report.txt
 
       - name: Upload TFLint report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tflint-report-${{ inputs.environment }}
-          path: ${{ inputs.working_directory }}/tflint-report.txt
+          path: tflint-report.txt
           if-no-files-found: error
