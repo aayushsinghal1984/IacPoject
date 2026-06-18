@@ -1,0 +1,42 @@
+name: "TFLint"
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      working_directory:
+        required: false
+        type: string
+        default: "."
+
+jobs:
+  tflint:
+    name: "TFLint (${{ inputs.environment }})"
+    runs-on: ubuntu-latest   
+    container:
+      image: ghcr.io/terraform-linters/tflint:latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: TFLint Init
+        run: tflint --init
+
+      - name: TFLint Run
+        run: |
+          tflint --format compact --recursive > tflint-report.txt
+
+      - name: Upload TFLint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tflint-report-${{ inputs.environment }}
+          path: tflint-report.txt
+          if-no-files-found: ignore
+          retention-days: 7
