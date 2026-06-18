@@ -1,4 +1,4 @@
-name: 'docker terraform init'
+name: 'docker workspace init'
 
 on:
   workflow_dispatch:
