@@ -1,0 +1,50 @@
+name: "Docker TFSec"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, qa, prod]
+        required: true
+      working_directory:
+        description: "Folder where .tf files exist (e.g., network/env)"
+        default: "."
+        type: string
+
+jobs:
+  tfsec:
+    name: "TFSec (${{ inputs.environment }})"
+    runs-on: self-hosted
+
+    container:
+      image: aquasecurity/tfsec:v1.28
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Debug Folder
+        run: |
+          echo "Scanning directory: ${{ inputs.working_directory }}"
+          ls -R "${{ inputs.working_directory }}"
+
+      - name: TFSec Scan
+        run: |
+
+          tfsec "${{ inputs.working_directory }}" \
+            --format json \
+            --soft-fail \
+            --out tfsec-report.json
+
+      - name: Print TFSec Summary to Console
+        if: always()
+        run: |
+          echo "--- TFSec Scan JSON Results Preview ---"
+          if [ -f "tfsec-report.json" ]; then
+            head -n 50 tfsec-report.json || true
+          else
+            echo "No report file generated."
+          fi
+
+      
