@@ -27,12 +27,12 @@ jobs:
   init:
     name: "Init"
     runs-on: self-hosted
-    container:
-      image: hashicorp/terraform:1.9.0    
-
+    
     defaults:
       run:
         working-directory: ${{ inputs.working_directory }}
+    container:
+      image: hashicorp/terraform:1.9.0        
 
     steps:
       - name: Checkout
