@@ -15,7 +15,7 @@ on:
 jobs:
   tfsec:
     name: "TFSec (${{ inputs.environment }})"
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     container:
       image: aquasec/tfsec:v1.28
