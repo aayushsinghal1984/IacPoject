@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/aquasecurity/tfsec:v1.28
-
+      image: aquasec/tfsec:v1.28
+      options: --user ${{ matrix.uid || '1001' }}:${{ matrix.gid || '1001' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
