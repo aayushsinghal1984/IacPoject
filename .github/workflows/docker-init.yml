@@ -40,6 +40,8 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_USE_OIDC: "true"
+      ARM_SKIP_PROVIDER_REGISTRATION: "true"
 
     steps:
       - name: Checkout
@@ -52,17 +54,20 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan -input=false -out=tfplan
-        
-      - name: Generate Plan Summary
-        if: always()
         run: |
-          echo "### Terraform Plan Summary for ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo '```hcl' >> $GITHUB_STEP_SUMMARY       
-          head -c 2000 plan_summary.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "Link to workspace: https://app.terraform.io/app/UL-ULSE/${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-
+          terraform plan -input=false -out=tfplan -no-color > plan_summary.txt || (cat plan_summary.txt && exit 1)
+          
+      - name: Generate Plan Summary
+        if: always() 
+        run: |
+          if [ -f plan_summary.txt ]; then
+            echo "# Terraform Plan Summary for ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+            echo '```hcl' >> $GITHUB_STEP_SUMMARY       
+            cat plan_summary.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Plan failed, no summary file generated." >> $GITHUB_STEP_SUMMARY
+          fi
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
