@@ -14,7 +14,8 @@ RUN apk add --no-cache \
     openssh-client \
     ca-certificates \
     curl \
-    bash
+    bash \
+    jq
 
 COPY --from=terraform /bin/terraform /usr/local/bin/terraform
 COPY --from=tflint /usr/local/bin/tflint /usr/local/bin/tflint
