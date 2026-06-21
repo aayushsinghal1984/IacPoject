@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write # Zaroori: Package upload karne ke liye
+      packages: write # 
 
     steps:
       - name: Checkout repository
