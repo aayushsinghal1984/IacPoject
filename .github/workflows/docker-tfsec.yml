@@ -46,10 +46,4 @@ jobs:
             echo "No report file generated."
           fi
 
-      - name: Upload TFSec report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfsec-report-${{ inputs.environment }}
-          path: tfsec-report.json
-          if-no-files-found: error
+    
