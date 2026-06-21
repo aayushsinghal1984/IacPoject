@@ -1,4 +1,4 @@
-name: "OPA Policy Validation"
+name: "docker OPA Policy Validation"
 
 on:
   workflow_dispatch:
