@@ -17,9 +17,7 @@ jobs:
     name: "TFSec (${{ inputs.environment }})"
     runs-on: self-hosted
     container:
-      image: aquasec/tfsec:v1.28
-      # PRODUCTION BEST PRACTICE: 
-      # Yeh bina root privilege diye container ko runner ke workspace aur temp folder par file write karne ki ijazat deta hai.
+      image: aquasec/tfsec:v1.28     
       options: --user 1001 
 
     steps:
