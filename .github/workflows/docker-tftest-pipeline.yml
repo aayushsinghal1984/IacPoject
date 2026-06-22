@@ -41,21 +41,11 @@ jobs:
       
       - name: Terraform Init
         run: terraform init -input=false
-
-  terraform-test:
-    name: "Terraform Test"
-    needs: terraform-init
-    runs-on:  ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ inputs.working_directory }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
+        
       - name: Terraform Test
         run: |
           terraform init -input=false
           terraform test -var-file="environments/${{ inputs.environment }}.tfvars" -verbose 2>&1 | tee test-output.txt
 
+  
       
