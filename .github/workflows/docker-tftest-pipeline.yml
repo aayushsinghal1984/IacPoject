@@ -22,7 +22,7 @@ jobs:
 
   terraform-plan:
     name: "Terraform Plan"
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     container:
       image: hashicorp/terraform:1.9.0
     defaults:
