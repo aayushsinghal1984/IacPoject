@@ -1,4 +1,4 @@
-name: "Docker OPA Policy Validation"
+name: "Docker OPA Pipeline"
 on:
   workflow_dispatch:
     inputs:
@@ -12,30 +12,33 @@ on:
         type: string
 
 jobs:
-  opa:
-    name: "OPA Validation (${{ inputs.environment }})"
+  opa-validation:
     runs-on: self-hosted
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download tfplan JSON artifact
-        uses: actions/download-artifact@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          name: tfplan-json-${{ inputs.environment }}-${{ github.run_id }}
-          path: ${{ inputs.working_directory }}
+          registry: ghcr.io
+          username: aayushsinghal1984
+          password: Aayu@1983
 
-      - name: OPA Evaluate (Run inside container)
+
+      - name: Run OPA inside Container
         run: |
-          docker run --rm -v ${{ github.workspace }}:/workspace \
+          docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
           -w /workspace/${{ inputs.working_directory }} \
-          openpolicyagent/opa:latest \
-          eval --data "/workspace/policies" --input tfplan.json --format json 'data.terraform' > ${{ inputs.working_directory }}/opa-results.json
+          ghcr.io/aayushsinghal1984/toolimgae:v1 \
+          /bin/bash -c "opa eval --data /workspace/policies --input tfplan.json --format json 'data.terraform' > opa-results.json"
 
-      - name: Upload OPA results artifact
+
+      - name: Upload OPA results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: opa-results-${{ inputs.environment }}-${{ github.run_id }}
+          name: opa-results-${{ inputs.environment }}
           path: ${{ inputs.working_directory }}/opa-results.json
-          retention-days: 7
