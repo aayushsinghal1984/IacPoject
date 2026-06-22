@@ -17,15 +17,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        
+      - name: List files for debugging
+        run: ls -R ${{ inputs.working_directory }}
 
       - name: Run OPA inside Container
         run: |
           docker run --rm \
           --user $(id -u):$(id -g) \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/${{ inputs.working_directory }} \
           ghcr.io/aayushsinghal1984/toolimgae:v1 \
-          /bin/bash -c "opa eval --data /workspace/policies --input tfplan.json --format json 'data.terraform' > opa-results.json"
+          /bin/bash -c "opa eval --data /workspace/policies --input /workspace/${{ inputs.working_directory }}/tfplan.json --format json 'data.terraform' > /workspace/${{ inputs.working_directory }}/opa-results.json"
 
 
       - name: Upload OPA results
