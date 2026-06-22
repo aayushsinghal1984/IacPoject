@@ -55,22 +55,25 @@ jobs:
 
       - name: Terraform Plan
         run: |
-          terraform plan -input=false -out=tfplan -no-color > plan_summary.txt || (cat plan_summary.txt && exit 1)
+          terraform plan -input=false -out=tfplan -no-color > plan_summary.txt
+          terraform show -json tfplan > tfplan.json
           
       - name: Generate Plan Summary
         if: always() 
         run: |
           if [ -f plan_summary.txt ]; then
             echo "# Terraform Plan Summary for ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-            echo '```hcl' >> $GITHUB_STEP_SUMMARY       
+            echo '```hcl' >> $GITHUB_STEP_SUMMARY        
             cat plan_summary.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
             echo "Plan failed, no summary file generated." >> $GITHUB_STEP_SUMMARY
           fi
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan-${{ inputs.environment }}
-          path: ${{ inputs.working_directory }}/tfplan
-          retention-days: 1
+          name: tfplan-json-${{ inputs.environment }}
+          path: |
+            ${{ inputs.working_directory }}/tfplan
+            ${{ inputs.working_directory }}/tfplan.json
