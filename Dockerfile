@@ -2,7 +2,7 @@ FROM hashicorp/terraform:1.10 AS terraform
 FROM ghcr.io/terraform-linters/tflint:v0.55.0 AS tflint
 FROM aquasecurity/trivy:0.53.0 AS trivy
 FROM openpolicyagent/opa:1.1.0-static AS opa
-FROM aquasecurity/tfsec:v1.28 AS tfsec
+
 
 
 FROM alpine:3.20
