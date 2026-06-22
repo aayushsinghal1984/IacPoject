@@ -21,6 +21,7 @@ jobs:
       - name: Run OPA inside Container
         run: |
           docker run --rm \
+          --user $(id -u):$(id -g) \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace/${{ inputs.working_directory }} \
           ghcr.io/aayushsinghal1984/toolimgae:v1 \
