@@ -24,20 +24,16 @@ jobs:
       - name: Download tfplan JSON artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-json-${{ inputs.environment }}-${{ github.run_id }}
-          # Yahan path fix karein taaki file wahin download ho jahan OPA use dhund raha hai
+          name: tfplan-json-${{ inputs.environment }} # Wahi naam jo upar diya hai
           path: ${{ inputs.working_directory }}
 
       - name: Run OPA inside Container
         run: |
-
           docker run --rm \
           --user $(id -u):$(id -g) \
           -v ${{ github.workspace }}:/workspace \
           ghcr.io/aayushsinghal1984/toolimgae:v1 \
-          /bin/bash -c "opa eval --data /workspace/policies --input /workspace/tfplan.json --format json 'data.terraform' > /workspace/opa-results.json"
-
-
+          /bin/bash -c "opa eval --data /workspace/policies --input /workspace/${{ inputs.working_directory }}/tfplan.json --format json 'data.terraform' > /workspace/${{ inputs.working_directory }}/opa-results.json"
       - name: Upload OPA results
         if: always()
         uses: actions/upload-artifact@v4
