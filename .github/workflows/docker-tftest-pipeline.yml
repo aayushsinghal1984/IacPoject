@@ -20,7 +20,7 @@ permissions:
 
 jobs:
 
-  terraform-plan:
+  terraform-init:
     name: "Terraform init"
     runs-on: ubuntu-latest
     container:
