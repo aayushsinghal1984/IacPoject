@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: openpolicyagent/opa:latest
+      options: --entrypoint /bin/sh
 
     defaults:
       run:
