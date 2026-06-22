@@ -21,7 +21,7 @@ permissions:
 jobs:
 
   terraform-plan:
-    name: "Terraform Plan"
+    name: "Terraform init"
     runs-on: ubuntu-latest
     container:
       image: hashicorp/terraform:1.9.0
@@ -42,8 +42,8 @@ jobs:
 
   terraform-test:
     name: "Terraform Test"
-    needs: terraform-plan
-    runs-on: self-hosted
+    needs: terraform-init
+    runs-on:  ubuntu-latest
     defaults:
       run:
         working-directory: ${{ inputs.working_directory }}
