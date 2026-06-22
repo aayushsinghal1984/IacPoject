@@ -40,11 +40,6 @@ jobs:
       - name: Terraform Init
         run: terraform init -input=false
 
-      - name: Terraform Plan
-        run: |
-          terraform plan -input=false -out=tfplan -no-color > plan_summary.txt
-          terraform show -json tfplan > tfplan.json
-
   terraform-test:
     name: "Terraform Test"
     needs: terraform-plan
