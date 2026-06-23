@@ -4,23 +4,20 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target deployment environment"
+        description: "Target environment"
         required: true
         type: choice
-        options:
-          - dev
-          - qa
-          - prod
+        options: [dev, qa, prod]
 
       working_directory:
         description: "Terraform working directory"
         required: false
-        default: "."
-        type: string
+        default: "network/env"
 
 permissions:
   contents: read
   id-token: write
+  actions: read
 
 jobs:
   terraform-apply:
@@ -28,10 +25,6 @@ jobs:
 
     container:
       image: hashicorp/terraform:1.9.0
-
-    defaults:
-      run:
-        working-directory: ${{ inputs.working_directory }}
 
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
@@ -43,20 +36,54 @@ jobs:
       ARM_USE_OIDC: "true"
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download Plan Artifact
+      # -----------------------------
+      # DOWNLOAD ARTIFACT (PLAN)
+      # -----------------------------
+      - name: Download Terraform Plan Artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-${{ inputs.environment }}
+          name: tfplan-json-${{ inputs.environment }}
           path: ${{ inputs.working_directory }}
 
-      - name: List files (debug)
-        run: ls -R
+      - name: Verify downloaded files
+        run: |
+          echo "Listing working directory:"
+          ls -R ${{ inputs.working_directory }}
 
+      # -----------------------------
+      # TERRAFORM INIT
+      # -----------------------------
       - name: Terraform Init
+        working-directory: ${{ inputs.working_directory }}
         run: terraform init -input=false
 
+      # -----------------------------
+      # TERRAFORM APPLY
+      # -----------------------------
       - name: Terraform Apply
-        run: terraform apply -input=false -auto-approve tfplan
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          set -e
+
+          echo "Checking tfplan file..."
+          ls -lah
+
+          if [ ! -f "tfplan" ]; then
+            echo "ERROR: tfplan file not found!"
+            exit 1
+          fi
+
+          terraform apply -input=false -auto-approve tfplan
+
+      # -----------------------------
+      # SUMMARY
+      # -----------------------------
+      - name: GitHub Step Summary
+        if: always()
+        run: |
+          echo "# Terraform Apply Completed" >> $GITHUB_STEP_SUMMARY
+          echo "Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "Directory: ${{ inputs.working_directory }}" >> $GITHUB_STEP_SUMMARY
