@@ -1,4 +1,4 @@
-name: "Docker OPA Pipeline"
+name: "docker OPA Pipeline"
 
 on:
   workflow_dispatch:
@@ -13,53 +13,49 @@ on:
         type: string
 
 jobs:
-  opa-validation:
-    runs-on: ubuntu-latest
+  opa:
+    runs-on:  ubuntu-latest
+    container:
+      image: ubuntu:latest
     steps:
+      - name: Install Dependencies
+        run: |
+          apt-get update && apt-get install -y curl tar git
+          
       - name: Checkout code
         uses: actions/checkout@v4
-        
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
-
-      - name: Pull OPA Image
-        run: docker pull ghcr.io/aayushsinghal1984/toolimgae:v1
-
-      - name: Pull OPA Image
-        run: docker pull ghcr.io/aayushsinghal1984/toolimgae:v1
-
-      - name: Download tfplan JSON artifact
+      - name: Download tfplan artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-json-${{ inputs.environment }}
-          path: ${{ inputs.working_directory }}
+          name: tfplan
+          path: .
 
-
-      - name: Run OPA inside Container
+      - name: Install OPA
         run: |
-          docker run --rm \
-          --user $(id -u):$(id -g) \
-          -v ${{ github.workspace }}:/workspace \
-          ghcr.io/aayushsinghal1984/toolimgae:v1 \
-          /bin/bash -c "opa eval --data /workspace/policies --input /workspace/${{ inputs.working_directory }}/tfplan.json --format json 'data.terraform' > /workspace/${{ inputs.working_directory }}/opa-results.json"
+          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
+          chmod +x opa
+          mv opa /usr/local/bin/
 
+      - name: Evaluate Policy
+        run: |
+          opa eval \
+            --data policies \
+            --input tfplan.json \
+            --format json \
+            "data.azure.naming" > opa-results.json
 
-      - name: Generate OPA Summary
+      - name: Generate Summary
         if: always()
         run: |
-          echo "### OPA Validation Results" >> $GITHUB_STEP_SUMMARY
-          
-          # Check karte hain ki result file bani hai ya nahi
-          if [ -f "${{ inputs.working_directory }}/opa-results.json" ]; then
-            echo " **OPA Evaluation successful.**" >> $GITHUB_STEP_SUMMARY
+          echo "### OPA Validation Summary" >> $GITHUB_STEP_SUMMARY
+          if [ -f "opa-results.json" ]; then
+            echo "OPA evaluation completed successfully." >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat ${{ inputs.working_directory }}/opa-results.json >> $GITHUB_STEP_SUMMARY
+            cat opa-results.json >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo " **OPA Results file not found.** Check the logs for container errors." >> $GITHUB_STEP_SUMMARY
+            echo " OPA results file not found." >> $GITHUB_STEP_SUMMARY
           fi
+
+     
