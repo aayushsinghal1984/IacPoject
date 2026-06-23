@@ -1,4 +1,4 @@
-name: "docker TFSec"
+name: "TFSec - Production Stable Pipeline"
 
 on:
   workflow_dispatch:
@@ -19,15 +19,25 @@ jobs:
 
     steps:
 
+      - name: Fix Runner Workspace Permissions
+        run: |
+          sudo chown -R azureuser:azureuser /home/azureuser/actions-runner/_work || true
+          sudo rm -rf $GITHUB_WORKSPACE || true
+          mkdir -p $GITHUB_WORKSPACE
+          sudo chown -R $(id -u):$(id -g) $GITHUB_WORKSPACE
+
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Debug Workspace
         run: |
           echo "Scanning directory: ${{ inputs.working_directory }}"
           ls -R "${{ inputs.working_directory }}"
 
-      - name: Run TFSec Scan (Docker Container)
+
+      - name: Run TFSec Scan (Container)
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/src \
@@ -47,14 +57,14 @@ jobs:
       - name: GitHub Step Summary
         if: always()
         run: |
-          echo "## TFSec Security Scan Report" >> $GITHUB_STEP_SUMMARY
+          echo "##  TFSec Security Scan Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f "tfsec-report.json" ]; then
-            echo "###  Report Preview" >> $GITHUB_STEP_SUMMARY
+            echo "###  Report Preview (Top 50 lines)" >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
             head -n 50 tfsec-report.json >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo " No report generated" >> $GITHUB_STEP_SUMMARY
+            echo "❌ No report generated" >> $GITHUB_STEP_SUMMARY
           fi
