@@ -1,4 +1,4 @@
-name: "TFSec - Production Stable Pipeline"
+name: " docker TFSec pipeline"
 
 on:
   workflow_dispatch:
