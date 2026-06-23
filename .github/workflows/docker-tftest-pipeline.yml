@@ -46,9 +46,8 @@ jobs:
         run: terraform init -input=false
         
       - name: Terraform Test
-        run: |
-          terraform init -input=false
-          terraform test -var-file="terraform.tfvars" -verbose 2>&1 | tee test-output.txt
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform test
 
   
       
