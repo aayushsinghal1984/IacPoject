@@ -21,6 +21,9 @@ jobs:
       - name: List files for debugging
         run: ls -R ${{ inputs.working_directory }}
         
+      - name: List artifacts
+        run: gh run view ${{ github.run_id }} --json artifacts
+        
       - name: Download tfplan JSON artifact
         uses: actions/download-artifact@v4
         with:
