@@ -1,5 +1,4 @@
-
-name: "TFSec - Secure Production Scan"
+name: "docker TFSec"
 
 on:
   workflow_dispatch:
@@ -19,48 +18,40 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      #Checkout runs on HOST 
+
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Fix permissions (safe for self-hosted)
-      - name: Fix workspace permissions
-        run: |
-          sudo chown -R $(id -u):$(id -g) $GITHUB_WORKSPACE || true
-
-      # Debug workspace
-      - name: Debug Folder
+      - name: Debug Workspace
         run: |
           echo "Scanning directory: ${{ inputs.working_directory }}"
           ls -R "${{ inputs.working_directory }}"
 
-      # Run tfsec inside container (NO checkout inside container)
-      - name: Run TFSec Scan (Container)
-        uses: docker://aquasec/tfsec:v1.28
-        with:
-          args: >
-            ${{ inputs.working_directory }}
-            --format json
-            --soft-fail
-            --out tfsec-report.json
+      - name: Run TFSec Scan (Docker Container)
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            aquasec/tfsec:v1.28 \
+            /src/${{ inputs.working_directory }} \
+            --format json \
+            --soft-fail \
+            --out /src/tfsec-report.json
 
-      # Upload artifact (important for production)
-      - name: Upload TFSec Report
+      - name: Upload Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tfsec-report
           path: tfsec-report.json
 
-      # GitHub Summary UI
-      - name: TFSec Summary
+      - name: GitHub Step Summary
         if: always()
         run: |
           echo "## TFSec Security Scan Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f "tfsec-report.json" ]; then
-            echo "### Top 50 lines of report" >> $GITHUB_STEP_SUMMARY
+            echo "###  Report Preview" >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
             head -n 50 tfsec-report.json >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
