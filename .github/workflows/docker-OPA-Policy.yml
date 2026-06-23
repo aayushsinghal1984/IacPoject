@@ -28,25 +28,22 @@ jobs:
       - name: Download tfplan artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-json-${{ inputs.environment }} # Input ke saath match kiya
-          path: .
+          name: tfplan-json-dev # Uploaded file ka naam yahi hai
+          path: ./downloaded_artifacts # Ek specific folder mein download karte hain
 
-      - name: Install OPA
+      - name: Verify Downloaded File
         run: |
-          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
-          chmod +x opa
-          mv opa /usr/local/bin/
-          opa version
+          echo "Listing files in downloaded_artifacts folder:"
+          ls -R ./downloaded_artifacts
 
       - name: Evaluate Policy
         run: |
-        
+          # File yahan se pick karenge
           opa eval \
             --data policies \
-            --input tfplan.json \
+            --input ./downloaded_artifacts/tfplan.json \
             --format json \
             "data.azure.naming" > opa-results.json
-
       - name: Generate Summary
         if: always()
         run: |
