@@ -7,7 +7,7 @@ on:
         type: choice
         options: [dev, qa, prod]
         required: true
-   working_directory:
+      working_directory:
         description: "Folder where tfplan.json exists"
         default: "."
         type: string      
@@ -43,8 +43,7 @@ jobs:
           # 1. FIX: Directory ko safe mark karein
           git config --global --add safe.directory '*'
           
-          # 2. Dynamic Run ID Fetch: Kisi bhi workflow ka latest success run uthao
-          # --status success ensures hum sirf valid plans utha rahe hain
+          # 2. Dynamic Run ID Fetch: Latest success run uthao
           RUN_ID=$(gh run list --status success --limit 1 --json databaseId --jq '.[0].databaseId')
           
           if [ -z "$RUN_ID" ]; then
@@ -55,7 +54,6 @@ jobs:
           echo "Using Run ID: $RUN_ID"
           
           # 3. Download Artifact
-          # Isse folder structure bhi preserve rahega
           gh run download $RUN_ID
           
           # 4. Install OPA
@@ -63,8 +61,7 @@ jobs:
           chmod +x opa
           mv opa /usr/local/bin/
           
-          # 5. Dynamic Path Selection (Find command)
-          # Agar tfplan.json kisi bhi folder mein ho, ye use automatically dhund lega
+          # 5. Dynamic Path Selection
           PLAN_FILE=$(find . -name "tfplan.json" | head -n 1)
           
           if [ -z "$PLAN_FILE" ]; then
