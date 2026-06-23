@@ -1,4 +1,4 @@
-name: "Docker OPA Pipeline"
+name: "docker opa-pipeline"
 
 on:
   workflow_dispatch:
