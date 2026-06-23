@@ -16,7 +16,7 @@ jobs:
   opa:
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:22.04 # Latest ki jagah specific version best practice hai
+      image: ubuntu:22.04
     steps:
       - name: Install Packages
         run: |
@@ -25,34 +25,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+
       - name: Download tfplan artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-json-dev # Uploaded file ka naam yahi hai
-          path: ./downloaded_artifacts # Ek specific folder mein download karte hain
+          name: tfplan-json-${{ inputs.environment }}
+          path: tfplan_data
 
       - name: Verify Downloaded File
         run: |
-          echo "Listing files in downloaded_artifacts folder:"
-          ls -R ./downloaded_artifacts
+          ls -R tfplan_data
+
+      - name: Install OPA
+        run: |
+          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
+          chmod +x opa
+          mv opa /usr/local/bin/
 
       - name: Evaluate Policy
         run: |
-          # File yahan se pick karenge
+          # Generic pathing ka use
           opa eval \
             --data policies \
-            --input ./downloaded_artifacts/tfplan.json \
+            --input tfplan_data/tfplan.json \
             --format json \
             "data.azure.naming" > opa-results.json
+
       - name: Generate Summary
         if: always()
         run: |
-          echo "### OPA Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### OPA Validation Summary (${{ inputs.environment }})" >> $GITHUB_STEP_SUMMARY
           if [ -f "opa-results.json" ]; then
-            echo " OPA evaluation completed successfully." >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
             cat opa-results.json >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo "OPA results file not found." >> $GITHUB_STEP_SUMMARY
+            echo "❌ Error: opa-results.json not found." >> $GITHUB_STEP_SUMMARY
           fi
