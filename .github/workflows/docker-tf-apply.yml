@@ -1,4 +1,4 @@
-name: "docker Terraform Apply Pipeline"
+name: "Terraform Apply"
 
 on:
   workflow_dispatch:
@@ -8,21 +8,24 @@ on:
         options: [dev, qa, prod]
         required: true
       working_directory:
-        description: "Terraform working directory"
-        default: "."
         type: string
+        default: "."
 
 permissions:
-  actions: read
   contents: read
+  actions: read
 
 jobs:
-  terraform-apply:
+  apply:
     runs-on: self-hosted
 
     container:
-      image: ubuntu:latest
-      
+      image: hashicorp/terraform:1.9.0
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       TF_WORKSPACE: ${{ inputs.environment }}
@@ -33,84 +36,55 @@ jobs:
       ARM_USE_OIDC: "true"
 
     steps:
-      - name: Install Dependencies (Fix APT + Tools)
-        run: |
-          set -e
-          apt-get update
-          apt-get install -y curl git unzip jq gnupg lsb-release ca-certificates
-          rm -f /etc/apt/sources.list.d/hashicorp.list || true
-          curl -sSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-            | dd of=/usr/share/keyrings/githubcli.gpg
-          chmod go+r /usr/share/keyrings/githubcli.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli.gpg] https://cli.github.com/packages stable main" \
-            > /etc/apt/sources.list.d/github-cli.list
-          apt-get update
-          apt-get install -y gh
-          curl -fsSL https://apt.releases.hashicorp.com/gpg \
-            | gpg --dearmor -o /usr/share/keyrings/hashicorp.gpg
-          echo "deb [signed-by=/usr/share/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-            > /etc/apt/sources.list.d/hashicorp.list
-          apt-get update
-          apt-get install -y terraform
-          terraform version
-          gh --version
-
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch Terraform Plan Artifact
+      - name: Install GitHub CLI
+        run: |
+          apt-get update && apt-get install -y gh jq curl
+
+      - name: Get latest plan run & download artifact
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          git config --global --add safe.directory '*'
-
-          echo "Searching latest successful plan run..."
 
           RUN_ID=$(gh run list \
-            --workflow "docker terraform init pipeline" \
+            --workflow "terraform-plan" \
             --status success \
             --limit 1 \
             --json databaseId \
             --jq '.[0].databaseId')
 
-          if [ -z "$RUN_ID" ]; then
-            echo "No successful plan run found"
-            exit 1
-          fi
-
-          echo "Using Run ID: $RUN_ID"
+          echo "Run ID: $RUN_ID"
 
           gh run download "$RUN_ID" \
-            --name "tfplan-json-${{ inputs.environment }}"
+            --name "tfplan-${{ inputs.environment }}" \
+            --dir ./artifact
 
           echo "Downloaded files:"
-          ls -R .
+          find ./artifact -type f
 
       - name: Terraform Init
-        run: |
-          set -e
-          cd "${{ inputs.working_directory }}"
-          terraform init -input=false
+        run: terraform init -input=false
 
-      - name: Terraform Apply
+      - name: Terraform Apply (SAFE)
         run: |
           set -e
-          cd "${{ inputs.working_directory }}"
-      
-          echo "Checking plan file..."
-          ls -lah
-      
-          if [ ! -f "tfplan" ]; then
-            echo "ERROR: tfplan file not found in working directory"
-            find . -type f
+
+          PLAN_FILE=$(find ./artifact -name "tfplan" | head -n 1)
+
+          if [ -z "$PLAN_FILE" ]; then
+            echo " tfplan not found"
             exit 1
           fi
-          terraform apply -input=false -auto-approve tfplan
 
-      - name: GitHub Step Summary
+          echo "Using plan: $PLAN_FILE"
+
+          terraform apply -input=false -auto-approve "$PLAN_FILE"
+
+      - name: Summary
         if: always()
         run: |
           echo "# Terraform Apply Completed" >> $GITHUB_STEP_SUMMARY
           echo "Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "Directory: ${{ inputs.working_directory }}" >> $GITHUB_STEP_SUMMARY
