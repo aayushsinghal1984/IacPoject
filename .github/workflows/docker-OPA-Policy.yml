@@ -40,37 +40,31 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. FIX: Directory ko safe mark karein
+          # 1. Directory Permissions Fix
           git config --global --add safe.directory '*'
           
-          # 2. Dynamic Run ID Fetch: Latest success run uthao
-          RUN_ID=$(gh run list --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          # 2. Latest Terraform Run ID fetch
+          # NOTE: "terraform-init.yml" ko apni us file name se replace karein jo plan run karti hai
+          RUN_ID=$(gh run list --workflow "terraform-init.yml" --status success --limit 1 --json databaseId --jq '.[0].databaseId')
           
           if [ -z "$RUN_ID" ]; then
-            echo "Error: No successful runs found in this repository."
+            echo "Error: No successful run found for 'terraform-init.yml'."
             exit 1
           fi
           
           echo "Using Run ID: $RUN_ID"
           
           # 3. Download Artifact
-          gh run download $RUN_ID
+          # Ensure name exactly matches what you used in Upload step
+          gh run download $RUN_ID --name "tfplan-json-${{ inputs.environment }}"
           
           # 4. Install OPA
           curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
           chmod +x opa
           mv opa /usr/local/bin/
           
-          # 5. Dynamic Path Selection
-          PLAN_FILE=$(find . -name "tfplan.json" | head -n 1)
-          
-          if [ -z "$PLAN_FILE" ]; then
-            echo "Error: tfplan.json not found in downloaded artifacts."
-            exit 1
-          fi
-          
-          echo "Found Plan File at: $PLAN_FILE"
-          
-          # 6. Evaluate Policy
+          # 5. Evaluate Policy
           echo "Running OPA Evaluation..."
-          opa eval -d policies -i "$PLAN_FILE" "data.azure.naming"
+          # Agar file folder ke andar hai, toh yahan path change karein
+          ls -l tfplan.json 
+          opa eval -d policies -i tfplan.json "data.azure.naming"
