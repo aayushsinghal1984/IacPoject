@@ -1,4 +1,4 @@
-name: "docker OPA Pipeline"
+name: "Docker OPA Pipeline"
 
 on:
   workflow_dispatch:
@@ -14,47 +14,48 @@ on:
 
 jobs:
   opa:
-    runs-on:  ubuntu-latest
-    
-container:
-      image: ubuntu:latest
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:22.04 # Latest ki jagah specific version best practice hai
     steps:
       - name: Install Packages
         run: |
-          apt-get update
-          apt-get install -y \
-            curl \
-            tar \
-            git
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+          apt-get update && apt-get install -y curl tar git
+          
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download tfplan artifact
+        uses: actions/download-artifact@v4
         with:
-          name: tfplan
+          name: tfplan-json-${{ inputs.environment }} # Input ke saath match kiya
+          path: .
+
       - name: Install OPA
         run: |
-          curl -L -o opa \
-            https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
+          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
           chmod +x opa
           mv opa /usr/local/bin/
           opa version
+
       - name: Evaluate Policy
         run: |
+        
           opa eval \
-            -d policies \
-            -i tfplan.json \
-            "data.azure.naming"
+            --data policies \
+            --input tfplan.json \
+            --format json \
+            "data.azure.naming" > opa-results.json
 
       - name: Generate Summary
         if: always()
         run: |
           echo "### OPA Validation Summary" >> $GITHUB_STEP_SUMMARY
           if [ -f "opa-results.json" ]; then
-            echo "OPA evaluation completed successfully." >> $GITHUB_STEP_SUMMARY
+            echo " OPA evaluation completed successfully." >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
             cat opa-results.json >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo " OPA results file not found." >> $GITHUB_STEP_SUMMARY
+            echo "OPA results file not found." >> $GITHUB_STEP_SUMMARY
           fi
-
-     
