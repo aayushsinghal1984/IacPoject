@@ -7,10 +7,6 @@ on:
         type: choice
         options: [dev, qa, prod]
         required: true
-      working_directory:
-        description: "Folder where tfplan.json exists"
-        default: "."
-        type: string
 
 permissions:
   actions: read
@@ -40,30 +36,40 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. FIX: Directory ko safe mark karein (Dubious ownership error fix)
+          # 1. FIX: Directory ko safe mark karein
           git config --global --add safe.directory '*'
           
-          # 2. Fetch Latest Successful Run ID for Terraform Workflow
-          # IMPORTANT: "terraform-init.yml" ko apni actual Terraform workflow filename se badlein
-          RUN_ID=$(gh run list --workflow "terraform-init.yml" --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          # 2. Dynamic Run ID Fetch: Kisi bhi workflow ka latest success run uthao
+          # --status success ensures hum sirf valid plans utha rahe hain
+          RUN_ID=$(gh run list --status success --limit 1 --json databaseId --jq '.[0].databaseId')
           
           if [ -z "$RUN_ID" ]; then
-            echo "Error: No successful Terraform runs found. Check if your workflow filename is correct."
+            echo "Error: No successful runs found in this repository."
             exit 1
           fi
           
-          echo "Using Terraform Run ID: $RUN_ID"
+          echo "Using Run ID: $RUN_ID"
           
           # 3. Download Artifact
-          gh run download $RUN_ID --name "tfplan-json-${{ inputs.environment }}"
+          # Isse folder structure bhi preserve rahega
+          gh run download $RUN_ID
           
           # 4. Install OPA
           curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
           chmod +x opa
           mv opa /usr/local/bin/
           
-          # 5. Evaluate Policy
+          # 5. Dynamic Path Selection (Find command)
+          # Agar tfplan.json kisi bhi folder mein ho, ye use automatically dhund lega
+          PLAN_FILE=$(find . -name "tfplan.json" | head -n 1)
+          
+          if [ -z "$PLAN_FILE" ]; then
+            echo "Error: tfplan.json not found in downloaded artifacts."
+            exit 1
+          fi
+          
+          echo "Found Plan File at: $PLAN_FILE"
+          
+          # 6. Evaluate Policy
           echo "Running OPA Evaluation..."
-          # File verify karein
-          ls -l tfplan.json
-          opa eval -d policies -i tfplan.json "data.azure.naming"
+          opa eval -d policies -i "$PLAN_FILE" "data.azure.naming"
