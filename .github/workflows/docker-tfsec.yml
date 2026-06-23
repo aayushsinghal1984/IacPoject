@@ -1,4 +1,4 @@
-name: "TFSec - Production Secure Scan"
+name: " docker TFSec - Production Secure Scan"
 
 on:
   workflow_dispatch:
