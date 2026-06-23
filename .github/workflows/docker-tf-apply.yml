@@ -1,4 +1,4 @@
-name: " docker tf-apply pipeline"
+name: "docker tf-apply pipeline"
 
 on:
   workflow_dispatch:
@@ -11,6 +11,7 @@ on:
           - dev
           - qa
           - prod
+
       working_directory:
         description: "Terraform working directory"
         required: false
@@ -28,7 +29,11 @@ jobs:
     container:
       image: hashicorp/terraform:1.9.0
 
-    env:       
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       TF_WORKSPACE: ${{ inputs.environment }}
 
@@ -38,22 +43,14 @@ jobs:
       ARM_USE_OIDC: "true"
 
     steps:
-      - uses: actions/checkout@v4
-
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.ARM_CLIENT_ID }}
-          tenant-id: ${{ secrets.ARM_TENANT_ID }}
-          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Download Plan Artifact
         uses: actions/download-artifact@v4
         with:
           name: tfplan-${{ inputs.environment }}
-          path: .
+          path: ${{ inputs.working_directory }}
 
       - name: List files (debug)
         run: ls -R
