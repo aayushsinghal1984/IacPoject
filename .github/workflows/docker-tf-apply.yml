@@ -22,7 +22,7 @@ jobs:
 
 
     container:
-      image: hashicorp/terraform:1.9.0  
+      image:ubuntu:latest
 
     steps:
       - name: Install required tools
@@ -34,6 +34,14 @@ jobs:
           curl -sSL https://github.com/cli/cli/releases/latest/download/gh_2.95.0_linux_amd64.tar.gz -o gh.tar.gz
           tar -xzf gh.tar.gz
           mv gh*/bin/gh /usr/local/bin/gh
+          
+      - name: Install Terraform
+        run: |
+          TERRAFORM_VERSION="1.13.0"
+          wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+          unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+          mv terraform /usr/local/bin/
+          terraform version
 
       - name: Checkout Code
         uses: actions/checkout@v4
