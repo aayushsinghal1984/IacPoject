@@ -40,28 +40,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. Directory Permissions Fix
-          git config --global --add safe.directory '*'
-          
-          # 2. Fetch Latest Successful Run ID for docker-init.yml
-          RUN_ID=$(gh run list --workflow "docker-init.yml" --status success --limit 1 --json databaseId --jq '.[0].databaseId')
-          
+          git config --global --add safe.directory '*'         
+          RUN_ID=$(gh run list --workflow "docker-init.yml" --status success --limit 1 --json databaseId --jq '.[0].databaseId')  
           if [ -z "$RUN_ID" ]; then
             echo "Error: No successful run found for 'docker-init.yml'."
             exit 1
-          fi
-          
+          fi          
           echo "Using Run ID: $RUN_ID"
           
-          # 3. Download Artifact
+          #  Download Artifact
           gh run download $RUN_ID --name "tfplan-json-${{ inputs.environment }}"
           
-          # 4. Install OPA
+          # Install OPA
           curl -sL -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
           chmod +x opa
-          mv opa /usr/local/bin/
-          
-          # 5. Scan Details and Evaluation
+          mv opa /usr/local/bin/         
           echo "------------------------------------------"
           echo "OPA Scanning Directory: $(pwd)"
           echo "Scanning File: $(ls -l tfplan.json)"
@@ -71,10 +64,10 @@ jobs:
           echo "Running OPA Evaluation..."
           OPA_JSON=$(opa eval -d policies -i tfplan.json "data.azure.naming")
           
-          # 6. Log JSON Result
+          #Log JSON Result
           echo "$OPA_JSON" | jq '.'
           
-          # 7. Add Results to GitHub Job Summary
+          #  Add Results to GitHub Job Summary
           echo "# OPA Evaluation Results" >> $GITHUB_STEP_SUMMARY
           echo "### Scan Details" >> $GITHUB_STEP_SUMMARY
           echo "- **Scan Path:** $(pwd)" >> $GITHUB_STEP_SUMMARY
@@ -83,7 +76,7 @@ jobs:
           echo "$OPA_JSON" | jq '.' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           
-          # 8. Check for Violations
+          #  Check for Violations
           VIOLATIONS=$(echo "$OPA_JSON" | jq '.result[0].expressions[0].value | length')
           if [ "$VIOLATIONS" -gt 0 ]; then
             echo "::error:: OPA Policy Violations found: $VIOLATIONS"
