@@ -1,4 +1,5 @@
 name: "Docker OPA Pipeline"
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,7 +8,7 @@ on:
         options: [dev, qa, prod]
         required: true
       working_directory:
-        description: "Folder where .tf files exist"
+        description: "Folder where .tfplan.json exists"
         default: "."
         type: string
 
@@ -17,18 +18,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
-      - name: List files for debugging
-        run: ls -R ${{ inputs.working_directory }}
-        
-      - name: List artifacts
-        run: gh run view ${{ github.run_id }} --json artifacts
-        
+
+      - name: Pull OPA Image
+        run: docker pull ghcr.io/aayushsinghal1984/toolimgae:v1
+
       - name: Download tfplan JSON artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-json-${{ inputs.environment }} # Wahi naam jo upar diya hai
+          name: tfplan-json-${{ inputs.environment }}
           path: ${{ inputs.working_directory }}
+
 
       - name: Run OPA inside Container
         run: |
@@ -37,9 +36,19 @@ jobs:
           -v ${{ github.workspace }}:/workspace \
           ghcr.io/aayushsinghal1984/toolimgae:v1 \
           /bin/bash -c "opa eval --data /workspace/policies --input /workspace/${{ inputs.working_directory }}/tfplan.json --format json 'data.terraform' > /workspace/${{ inputs.working_directory }}/opa-results.json"
-      - name: Upload OPA results
+
+
+      - name: Generate OPA Summary
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: opa-results-${{ inputs.environment }}
-          path: ${{ inputs.working_directory }}/opa-results.json
+        run: |
+          echo "### OPA Validation Results" >> $GITHUB_STEP_SUMMARY
+          
+          # Check karte hain ki result file bani hai ya nahi
+          if [ -f "${{ inputs.working_directory }}/opa-results.json" ]; then
+            echo " **OPA Evaluation successful.**" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat ${{ inputs.working_directory }}/opa-results.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo " **OPA Results file not found.** Check the logs for container errors." >> $GITHUB_STEP_SUMMARY
+          fi
