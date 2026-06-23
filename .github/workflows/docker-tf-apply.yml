@@ -97,8 +97,15 @@ jobs:
         run: |
           set -e
           cd "${{ inputs.working_directory }}"
-
-          # IMPORTANT: ensure correct plan file name
+      
+          echo "Checking plan file..."
+          ls -lah
+      
+          if [ ! -f "tfplan" ]; then
+            echo "ERROR: tfplan file not found in working directory"
+            find . -type f
+            exit 1
+          fi
           terraform apply -input=false -auto-approve tfplan
 
       - name: GitHub Step Summary
