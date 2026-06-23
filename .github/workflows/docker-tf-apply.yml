@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 jobs:
-  terraform-plan:
+  terraform-apply:
     name: "Terraform Validate Plan"
     runs-on: self-hosted
     environment: ${{ inputs.environment }} 
