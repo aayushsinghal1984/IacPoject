@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   opa:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ubuntu:latest
     steps:
