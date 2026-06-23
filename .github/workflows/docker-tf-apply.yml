@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   terraform-apply:
-    name: "Terraform Validate Plan"
+    name: "Terraform apply"
     runs-on: self-hosted
     environment: ${{ inputs.environment }} 
     
