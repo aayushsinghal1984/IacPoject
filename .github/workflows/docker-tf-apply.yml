@@ -1,4 +1,4 @@
-name: "terraform apply pipeline"
+name: " docker tf-apply pipeline"
 
 on:
   workflow_dispatch:
