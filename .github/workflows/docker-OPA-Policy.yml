@@ -40,24 +40,30 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-
+          # 1. FIX: Directory ko safe mark karein (Dubious ownership error fix)
+          git config --global --add safe.directory '*'
+          
+          # 2. Fetch Latest Successful Run ID for Terraform Workflow
+          # IMPORTANT: "terraform-init.yml" ko apni actual Terraform workflow filename se badlein
           RUN_ID=$(gh run list --workflow "terraform-init.yml" --status success --limit 1 --json databaseId --jq '.[0].databaseId')
           
           if [ -z "$RUN_ID" ]; then
-            echo "Error: No successful Terraform runs found."
+            echo "Error: No successful Terraform runs found. Check if your workflow filename is correct."
             exit 1
           fi
           
-          echo "Using Run ID: $RUN_ID"
+          echo "Using Terraform Run ID: $RUN_ID"
           
-          # 2. Download Artifact
+          # 3. Download Artifact
           gh run download $RUN_ID --name "tfplan-json-${{ inputs.environment }}"
           
-          # 3. Install OPA
+          # 4. Install OPA
           curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
           chmod +x opa
           mv opa /usr/local/bin/
           
-          # 4. Evaluate Policy
+          # 5. Evaluate Policy
           echo "Running OPA Evaluation..."
+          # File verify karein
+          ls -l tfplan.json
           opa eval -d policies -i tfplan.json "data.azure.naming"
