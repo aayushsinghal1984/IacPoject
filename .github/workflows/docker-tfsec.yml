@@ -36,14 +36,19 @@ jobs:
             --soft-fail \
             --out tfsec-report.json
 
-      - name: Print TFSec Summary to Console
+      - name: TFSec Summary (GitHub Step Summary)
         if: always()
         run: |
-          echo "--- TFSec Scan JSON Results Preview ---"
+          echo "## 🔍 TFSec Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+      
           if [ -f "tfsec-report.json" ]; then
-            head -n 50 tfsec-report.json || true
+            echo "###  JSON Report Preview" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            head -n 50 tfsec-report.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo "No report file generated."
+            echo " No report file generated." >> $GITHUB_STEP_SUMMARY
           fi
 
     
