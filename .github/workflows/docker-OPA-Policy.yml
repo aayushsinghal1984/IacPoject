@@ -11,38 +11,53 @@ on:
         description: "Folder where tfplan.json exists"
         default: "."
         type: string
+
 permissions:
-  actions: read 
+  actions: read
   contents: read
+
 jobs:
   opa:
     runs-on: ubuntu-latest
     container:
       image: ubuntu:latest
     steps:
-      - name: Install Packages
+      - name: Install Packages and GitHub CLI
         run: |
           apt-get update
           apt-get install -y curl tar git
-          
-      - uses: actions/checkout@v4
-      
-      - uses: actions/download-artifact@v4
-        with:
-          name: tfplan-json-${{ inputs.environment }}
-          # Agar aap manual trigger kar rahe hain, toh yahan specific run-id dena hoga
-          # Ya agar aap ek hi workflow mein jobs use kar rahe hain, toh iski zarurat nahi.
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Install OPA
+          # Install GitHub CLI
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          apt-get update
+          apt-get install -y gh
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Fetch Artifact and Evaluate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+
+          RUN_ID=$(gh run list --workflow "terraform-init.yml" --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          
+          if [ -z "$RUN_ID" ]; then
+            echo "Error: No successful Terraform runs found."
+            exit 1
+          fi
+          
+          echo "Using Run ID: $RUN_ID"
+          
+          # 2. Download Artifact
+          gh run download $RUN_ID --name "tfplan-json-${{ inputs.environment }}"
+          
+          # 3. Install OPA
           curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
           chmod +x opa
           mv opa /usr/local/bin/
-          opa version
           
-      - name: Evaluate Policy
-        run: |
-          echo "Checking files in directory:"
-          ls -R
+          # 4. Evaluate Policy
+          echo "Running OPA Evaluation..."
           opa eval -d policies -i tfplan.json "data.azure.naming"
