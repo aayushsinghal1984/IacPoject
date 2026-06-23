@@ -1,4 +1,4 @@
-name: "Docker TFSec"
+name: "TFSec - Production Secure Scan"
 
 on:
   workflow_dispatch:
@@ -8,47 +8,58 @@ on:
         options: [dev, qa, prod]
         required: true
       working_directory:
-        description: "Folder where .tf files exist (e.g., network/env)"
+        description: "Terraform folder path"
         default: "."
         type: string
 
 jobs:
   tfsec:
-    name: "TFSec (${{ inputs.environment }})"
+    name: "TFSec Scan (${{ inputs.environment }})"
     runs-on: self-hosted
+
     container:
-      image: aquasec/tfsec:v1.28     
-      options: --user 1001 
+      image: aquasec/tfsec:v1.28
+      options: --user 1000
 
     steps:
+      - name: Fix workspace permissions (CRITICAL)
+        run: |
+          sudo chown -R $(id -u):$(id -g) /__w || true
+          sudo chmod -R 755 /__w || true
+
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Debug Folder
+      - name: Debug Workspace
         run: |
           echo "Scanning directory: ${{ inputs.working_directory }}"
           ls -R "${{ inputs.working_directory }}"
 
-      - name: TFSec Scan
+      - name: Run TFSec Scan (JSON Output)
         run: |
           tfsec "${{ inputs.working_directory }}" \
             --format json \
             --soft-fail \
             --out tfsec-report.json
 
-      - name: TFSec Summary (GitHub Step Summary)
+      - name: Upload tfsec report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfsec-report
+          path: tfsec-report.json
+
+      - name: GitHub Step Summary
         if: always()
         run: |
-          echo "## 🔍 TFSec Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "##  TFSec Security Scan Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-      
+
           if [ -f "tfsec-report.json" ]; then
-            echo "###  JSON Report Preview" >> $GITHUB_STEP_SUMMARY
+            echo "###  JSON Preview (Top 50 lines)" >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
             head -n 50 tfsec-report.json >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo " No report file generated." >> $GITHUB_STEP_SUMMARY
+            echo " No tfsec report generated" >> $GITHUB_STEP_SUMMARY
           fi
-
-    
