@@ -16,62 +16,29 @@ jobs:
   opa:
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:22.04
+      image: ubuntu:latest
     steps:
       - name: Install Packages
         run: |
-          apt-get update && apt-get install -y curl tar git
-
-      - name: Install GitHub CLI
-        run: |
-          type -p curl >/dev/null || (apt update && apt install curl -y)
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-          && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-          && apt update \
-          && apt install gh -yy
-          
-      - name: Checkout code
-        uses: actions/checkout@v4 
-        
-      - name: Mark directory as safe for git
-        run: git config --global --add safe.directory /__w/IacPoject/IacPoject   
-
-      - name: Download artifact from latest run
-        shell: bash
-        env:
-         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          RUN_ID=$(gh run list --workflow "your-workflow-filename.yml" --status success --limit 1 --json databaseId --jq '.[0].databaseId')       
-          echo "Found Run ID: $RUN_ID"         
-          gh run download $RUN_ID --name tfplan-json-dev
-      - name: Verify Downloaded File
-        run: |
-          ls -R tfplan_data
-
+          apt-get update
+          apt-get install -y \
+            curl \
+            tar \
+            git
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan
       - name: Install OPA
         run: |
-          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
+          curl -L -o opa \
+            https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
           chmod +x opa
           mv opa /usr/local/bin/
-
+          opa version
       - name: Evaluate Policy
         run: |
-          # Generic pathing ka use
           opa eval \
-            --data policies \
-            --input tfplan_data/tfplan.json \
-            --format json \
-            "data.azure.naming" > opa-results.json
-
-      - name: Generate Summary
-        if: always()
-        run: |
-          echo "### OPA Validation Summary (${{ inputs.environment }})" >> $GITHUB_STEP_SUMMARY
-          if [ -f "opa-results.json" ]; then
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat opa-results.json >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          else
-            echo "Error: opa-results.json not found." >> $GITHUB_STEP_SUMMARY
-          fi
+            -d policies \
+            -i tfplan.json \
+            "data.azure.naming"
