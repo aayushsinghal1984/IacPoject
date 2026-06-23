@@ -26,12 +26,13 @@ jobs:
         uses: actions/checkout@v4
 
 
-      - name: Download tfplan artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan-json-${{ inputs.environment }}
-          path: tfplan_data
-
+      - name: Download artifact from latest run
+        shell: bash
+        run: |   
+          RUN_ID=$(gh run list --workflow "your-workflow-filename.yml" --status success --limit 1 --json databaseId --jq '.[0].databaseId'         
+          gh run download $RUN_ID --name tfplan-json-dev
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify Downloaded File
         run: |
           ls -R tfplan_data
@@ -60,5 +61,5 @@ jobs:
             cat opa-results.json >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Error: opa-results.json not found." >> $GITHUB_STEP_SUMMARY
+            echo "Error: opa-results.json not found." >> $GITHUB_STEP_SUMMARY
           fi
