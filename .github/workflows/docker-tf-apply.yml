@@ -22,7 +22,7 @@ jobs:
 
 
     container:
-      image:ubuntu:latest
+      image: ubuntu:latest
 
     steps:
       - name: Install required tools
