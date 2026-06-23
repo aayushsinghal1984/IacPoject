@@ -24,7 +24,7 @@ permissions:
 jobs:
   terraform-plan:
     name: "Terraform Validate Plan"
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     environment: ${{ inputs.environment }} 
     
     container:
