@@ -1,4 +1,4 @@
-name: "Docker TFLint"
+name: "Docker TFLint pipeline"
 
 on:
   workflow_dispatch:
