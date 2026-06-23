@@ -18,6 +18,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Ab image pull karein
+      - name: Pull OPA Image
+        run: docker pull ghcr.io/aayushsinghal1984/toolimgae:v1
 
       - name: Pull OPA Image
         run: docker pull ghcr.io/aayushsinghal1984/toolimgae:v1
