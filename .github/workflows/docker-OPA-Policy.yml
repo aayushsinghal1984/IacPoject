@@ -7,6 +7,10 @@ on:
         type: choice
         options: [dev, qa, prod]
         required: true
+   working_directory:
+        description: "Folder where tfplan.json exists"
+        default: "."
+        type: string      
 
 permissions:
   actions: read
