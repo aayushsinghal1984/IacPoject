@@ -15,35 +15,34 @@ on:
 jobs:
   opa:
     runs-on:  ubuntu-latest
-    container:
+    
+container:
       image: ubuntu:latest
     steps:
-      - name: Install Dependencies
+      - name: Install Packages
         run: |
-          apt-get update && apt-get install -y curl tar git
-          
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download tfplan artifact
-        uses: actions/download-artifact@v4
+          apt-get update
+          apt-get install -y \
+            curl \
+            tar \
+            git
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
           name: tfplan
-          path: .
-
       - name: Install OPA
         run: |
-          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
+          curl -L -o opa \
+            https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
           chmod +x opa
           mv opa /usr/local/bin/
-
+          opa version
       - name: Evaluate Policy
         run: |
           opa eval \
-            --data policies \
-            --input tfplan.json \
-            --format json \
-            "data.azure.naming" > opa-results.json
+            -d policies \
+            -i tfplan.json \
+            "data.azure.naming"
 
       - name: Generate Summary
         if: always()
