@@ -1,4 +1,4 @@
-name: 'docker workspace init'
+name: 'docker  tf cloud workspace pipeline'
 
 on:
   workflow_dispatch:
