@@ -22,32 +22,13 @@ jobs:
       options: --user 1000
 
     steps:
-      - name: Fix workspace permissions (CRITICAL)
-        run: |
-          sudo chown -R $(id -u):$(id -g) /__w || true
-          sudo chmod -R 755 /__w || true
-
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Debug Workspace
-        run: |
-          echo "Scanning directory: ${{ inputs.working_directory }}"
-          ls -R "${{ inputs.working_directory }}"
-
-      - name: Run TFSec Scan (JSON Output)
-        run: |
-          tfsec "${{ inputs.working_directory }}" \
-            --format json \
-            --soft-fail \
-            --out tfsec-report.json
-
-      - name: Upload tfsec report artifact
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Run TFSec in container
+        uses: docker://aquasec/tfsec:v1.28
         with:
-          name: tfsec-report
-          path: tfsec-report.json
+          args: ". --format json --soft-fail --out tfsec-report.json"
 
       - name: GitHub Step Summary
         if: always()
