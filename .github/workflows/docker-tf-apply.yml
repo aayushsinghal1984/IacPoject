@@ -4,26 +4,35 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        type: choice
-        options: [dev, qa, prod]
+        description: "Target deployment environment"
         required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
       working_directory:
-        description: "Terraform folder path"
-        default: "./network/env"
+        description: "Terraform working directory"
+        required: false
+        default: "."
         type: string
 
 permissions:
-  actions: read
+  id-token: write
   contents: read
 
 jobs:
-  apply:
+  terraform-plan:
+    name: "Terraform Validate Plan"
     runs-on: self-hosted
-
-
+    environment: ${{ inputs.environment }} 
+    
     container:
-      image: ubuntu:latest
-      
+      image: ubantu:latest   
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+        
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       TF_WORKSPACE: ${{ inputs.environment }}
