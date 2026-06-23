@@ -1,0 +1,122 @@
+name: "docker Terraform Apply Pipeline"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, qa, prod]
+        required: true
+      working_directory:
+        description: "Terraform working directory"
+        default: "."
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  terraform-apply:
+    runs-on: self-hosted
+
+    container:
+      image: ubuntu:latest
+
+    steps:
+
+      - name: Install Dependencies (Fix APT + Tools)
+        run: |
+          set -e
+
+          apt-get update
+
+          # Core tools first
+          apt-get install -y curl git unzip jq gnupg lsb-release ca-certificates
+
+          # ==============================
+          # FIX: Remove broken HashiCorp repo (VERY IMPORTANT)
+          # ==============================
+          rm -f /etc/apt/sources.list.d/hashicorp.list || true
+
+          # ==============================
+          # GitHub CLI install
+          # ==============================
+          curl -sSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+            | dd of=/usr/share/keyrings/githubcli.gpg
+
+          chmod go+r /usr/share/keyrings/githubcli.gpg
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli.gpg] https://cli.github.com/packages stable main" \
+            > /etc/apt/sources.list.d/github-cli.list
+
+          apt-get update
+          apt-get install -y gh
+
+          # ==============================
+          # Terraform install (safe way)
+          # ==============================
+          curl -fsSL https://apt.releases.hashicorp.com/gpg \
+            | gpg --dearmor -o /usr/share/keyrings/hashicorp.gpg
+
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+            > /etc/apt/sources.list.d/hashicorp.list
+
+          apt-get update
+          apt-get install -y terraform
+
+          terraform version
+          gh --version
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Fetch Terraform Plan Artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git config --global --add safe.directory '*'
+
+          echo "Searching latest successful plan run..."
+
+          RUN_ID=$(gh run list \
+            --workflow "docker terraform init pipeline" \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+
+          if [ -z "$RUN_ID" ]; then
+            echo "No successful plan run found"
+            exit 1
+          fi
+
+          echo "Using Run ID: $RUN_ID"
+
+          gh run download "$RUN_ID" \
+            --name "tfplan-json-${{ inputs.environment }}"
+
+          echo "Downloaded files:"
+          ls -R .
+
+      - name: Terraform Init
+        run: |
+          set -e
+          cd "${{ inputs.working_directory }}"
+          terraform init -input=false
+
+      - name: Terraform Apply
+        run: |
+          set -e
+          cd "${{ inputs.working_directory }}"
+
+          # IMPORTANT: ensure correct plan file name
+          terraform apply -input=false -auto-approve tfplan
+
+      - name: GitHub Step Summary
+        if: always()
+        run: |
+          echo "# Terraform Apply Completed" >> $GITHUB_STEP_SUMMARY
+          echo "Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "Directory: ${{ inputs.working_directory }}" >> $GITHUB_STEP_SUMMARY
