@@ -17,7 +17,10 @@ on:
         default: "."
         type: string
 env:
-  TF_WORKSPACE: statefile-${{ inputs.environment }}
+  TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+
+  TF_VAR_tfe_token: ${{ secrets.TF_API_TOKEN }}
+  TF_VAR_workspace_name: statefile-dev}
   
 permissions:
   id-token: write
@@ -46,14 +49,14 @@ jobs:
           ls -R 
       
       - name: Terraform Init
-        run: terraform init -input=false
+        run: terraform plan -no-color -out=tfplan > plan.txt
         env:    
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       - name: Terraform Plan
-        run: |
-          terraform plan -no-color -out=tfplan > plan.txt
         env:
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+          TF_VAR_tfe_token: ${{ secrets.TF_API_TOKEN }}
+          TF_VAR_workspace_name: statefile-dev
+        run: terraform plan -no-color -out=tfplan > plan.txt
       
       - name: Add Plan Summary
         run: |
