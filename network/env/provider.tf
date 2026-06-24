@@ -3,6 +3,9 @@ terraform {
 
   cloud {
     organization = "HCLIT"
+    workspaces {
+    name = "statefile-"
+  }
   }
 
   required_providers {
