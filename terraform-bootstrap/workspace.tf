@@ -1,6 +1,4 @@
 resource "tfe_workspace" "workspace" {
-  name         = var.workspace_name
+  name = "statefile-dev"
   organization = "HCLIT"
-
-  tag_names = ["statefile"]
 }
