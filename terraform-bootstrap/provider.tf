@@ -1,6 +1,6 @@
 terraform {
   cloud {
-    organization = var.org_name
+    organization = "HCLIT"
     workspaces {   
     }
   }
