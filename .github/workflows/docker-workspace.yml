@@ -42,22 +42,8 @@ jobs:
         run: |
           echo "Scanning directory: ${{ inputs.working_directory }}"
           ls -R 
-
-      - name: Create Backend Config
-        run: |
-          cat <<EOF > backend.tf
-          terraform {
-            cloud {
-              organization = "HCLITE"
-              workspaces {
-                name = "${{ inputs.environment }}"
-              }
-            }
-          }
-          EOF
       
       - name: Terraform Init
         run: terraform init -input=false
-        env:
-    
+        env:    
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
