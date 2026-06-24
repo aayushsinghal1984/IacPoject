@@ -1,4 +1,4 @@
-name: "terraform-cloud-bootstrap-pipeline"
+name: " docker main tfcloud-bootstrap-pipeline"
 
 on:
   workflow_dispatch:
@@ -52,38 +52,16 @@ jobs:
       - name: Install Terraform
         run: |
           TERRAFORM_VERSION=1.13.0
-
           wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-
           unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-
           mv terraform /usr/local/bin/
-
           terraform version
 
-      - name: Verify Working Directory
-        working-directory: ${{ inputs.working_directory }}
-        run: |
-          echo "Current directory:"
-          pwd
-
-          echo "Files:"
-          ls -la
-
-      - name: Terraform Format Check
-        working-directory: ${{ inputs.working_directory }}
-        run: terraform fmt -check || true
 
       - name: Terraform Init
         working-directory: ${{ inputs.working_directory }}
         run: |
           terraform init -input=false
-
-      - name: Verify Lock File
-        working-directory: ${{ inputs.working_directory }}
-        run: |
-          echo "Terraform lock file:"
-          cat .terraform.lock.hcl || true
 
       - name: Terraform Validate
         working-directory: ${{ inputs.working_directory }}
