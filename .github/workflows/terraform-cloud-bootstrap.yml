@@ -11,6 +11,16 @@ on:
           - dev
           - qa
           - prod
+          
+      organization:
+        description: "Terraform Cloud organization"
+        required: true
+        type: string
+
+      workspace_name:
+        description: "Terraform Cloud workspace name"
+        required: true
+        type: string
       working_directory:
         description: "Terraform working directory"
         required: false
@@ -39,7 +49,7 @@ jobs:
           mv terraform /usr/local/bin/
           terraform version
       - name: Terraform Init
-        working-directory: terraform-cloud
+        working-directory: ${{ inputs.working_directory }}
         run: terraform init
       - name: Debug Token
         env:
@@ -47,7 +57,7 @@ jobs:
         run: |
           echo "Length=${#TF_TOKEN_app_terraform_io}"
       - name: Terraform Plan
-        working-directory: terraform-cloud
+        working-directory: ${{ inputs.working_directory }}
         env:
           TFE_TOKEN: ${{ secrets.TF_API_TOKEN }}
         run: |
@@ -58,7 +68,7 @@ jobs:
           -var="azure_tenant_id=${{ secrets.ARM_TENANT_ID }}" \
           -var="azure_subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}"
       - name: Terraform Apply
-        working-directory: terraform-cloud
+        working-directory: ${{ inputs.working_directory }}
         env:
           TFE_TOKEN: ${{ secrets.TF_API_TOKEN }}
         run: |
