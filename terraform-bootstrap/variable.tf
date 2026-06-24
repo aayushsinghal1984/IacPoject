@@ -9,6 +9,3 @@ variable "organization" {
   type = string
 }
 
-variable "workspace_name" {
-  type = string
-}
