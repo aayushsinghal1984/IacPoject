@@ -1,22 +1,17 @@
-variable "organization" {
-  type = string
-}
+terraform {
+    cloud {
+    organization = "HCLIT"
 
-variable "workspace_name" {
-  type = string
-}
+    workspaces {
+      name = "bootstrap-state"
+    }
+  }
+  required_version = ">= 1.5.0"
 
-variable "azure_client_id" {
-  type      = string
-  sensitive = true
-}
-
-variable "azure_tenant_id" {
-  type      = string
-  sensitive = true
-}
-
-variable "azure_subscription_id" {
-  type      = string
-  sensitive = true
+  required_providers {
+    tfe = {
+      source  = "hashicorp/tfe"
+      version = "~> 0.66"
+    }
+  }
 }
