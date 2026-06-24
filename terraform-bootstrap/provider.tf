@@ -1,13 +1,13 @@
 terraform {
-  cloud {
-    organization = "HCLIT"
-    workspaces {
-
+  required_providers {
+    tfe = {
+      source  = "hashicorp/tfe"
+      version = "~> 0.65"
     }
   }
 }
 
 provider "tfe" {
   hostname = "app.terraform.io"
-    token    = var.tfe_token
+  token    = var.tfe_token
 }
