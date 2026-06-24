@@ -16,7 +16,9 @@ on:
         required: false
         default: "."
         type: string
-
+env:
+  TF_WORKSPACE: statefile-${{ inputs.environment }}
+  
 permissions:
   id-token: write
   contents: read
