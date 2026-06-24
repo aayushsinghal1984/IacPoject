@@ -1,4 +1,4 @@
-name: "docker tf-cloud-bootstrap-pipeline"
+name: terraform-cloud-bootstrap-pipeline
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ on:
           - dev
           - qa
           - prod
-          
+
       organization:
         description: "Terraform Cloud organization"
         required: true
@@ -21,6 +21,7 @@ on:
         description: "Terraform Cloud workspace name"
         required: true
         type: string
+
       working_directory:
         description: "Terraform working directory"
         required: false
@@ -30,52 +31,84 @@ on:
 jobs:
   terraform-cloud-bootstrap:
     runs-on: self-hosted
+
     container:
       image: ubuntu:latest
-    
+
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
-    
+
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-  
+
+      TF_VAR_tfe_token: ${{ secrets.TF_API_TOKEN }}
+      TF_VAR_workspace_name: ${{ inputs.workspace_name }}
 
     steps:
       - name: Install Packages
         run: |
           apt-get update
           apt-get install -y wget unzip curl git
-      - uses: actions/checkout@v4
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Install Terraform
         run: |
-          TERRAFORM_VERSION="1.13.0"
+          TERRAFORM_VERSION=1.13.0
+
           wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+
           unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+
           mv terraform /usr/local/bin/
+
           terraform version
+
+      - name: Verify Working Directory
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          echo "Current directory:"
+          pwd
+
+          echo "Files:"
+          ls -la
+
+      - name: Terraform Format Check
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform fmt -check || true
+
       - name: Terraform Init
         working-directory: ${{ inputs.working_directory }}
-        run: terraform init
-      - name: Debug Token
-        env:
-          TFE_TOKEN: ${{ secrets.TF_API_TOKEN }}
         run: |
-          echo "Length=${#TF_TOKEN_app_terraform_io}"
-          
-      - name: Terraform Plan       
+          terraform init -input=false
+
+      - name: Verify Lock File
         working-directory: ${{ inputs.working_directory }}
-        run: terraform plan
-        
+        run: |
+          echo "Terraform lock file:"
+          cat .terraform.lock.hcl || true
+
+      - name: Terraform Validate
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          terraform plan \
+            -input=false \
+            -no-color \
+            -out=tfplan \
+            -var="organization=${{ inputs.organization }}" \
+            -var="workspace_name=${{ inputs.workspace_name }}"
+
       - name: Terraform Apply
         working-directory: ${{ inputs.working_directory }}
-        env:
-          TFE_TOKEN: ${{ secrets.TF_API_TOKEN }}
         run: |
-          terraform apply -auto-approve \
-          -var="organization=${{ inputs.organization }}" \
-          -var="workspace_name=${{ inputs.workspace_name }}" \
-          -var="azure_client_id=${{ secrets.ARM_CLIENT_ID }}" \
-          -var="azure_tenant_id=${{ secrets.ARM_TENANT_ID }}" \
-          -var="azure_subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}"
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            tfplan
