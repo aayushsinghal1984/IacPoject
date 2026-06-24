@@ -1,6 +1,6 @@
 terraform {
   cloud {
-    organization = var.organization
+    organization = var.org_name
     workspaces {   
     }
   }
