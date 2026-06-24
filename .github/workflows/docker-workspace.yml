@@ -48,7 +48,7 @@ jobs:
           cat <<EOF > backend.tf
           terraform {
             cloud {
-              organization = "UL-ULSE"
+              organization = "HCLITE"
               workspaces {
                 name = "${{ inputs.environment }}"
               }
