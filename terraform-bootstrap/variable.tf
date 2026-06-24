@@ -1,7 +1,7 @@
 variable "org_name" {
   description = " Organization name in Terraform Cloud"
   type        = string
-  default     = "UL-ULSE"
+  default     = "HCLIT"
 }
 
 variable "env_list" {
