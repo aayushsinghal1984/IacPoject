@@ -60,6 +60,22 @@ jobs:
           echo "Scanning File: $(ls -l tfplan.json)"
           echo "Policy Directory: ./policies"
           echo "------------------------------------------"
+          echo "===== OPA VERSION ====="
+          opa version
+          
+          echo "===== POLICIES ====="
+          find policies -type f
+          
+          echo "===== PACKAGES ====="
+          grep -R "^package" policies || true
+          
+          echo "===== JSON VALIDATION ====="
+          jq . tfplan.json > /dev/null
+          echo "JSON OK"
+          
+          echo "===== RUNNING OPA ====="
+
+          set +e
           
           echo "Running OPA Evaluation..."
           OPA_JSON=$(opa eval -d policies -i tfplan.json "data.azure.naming" 2>&1)
