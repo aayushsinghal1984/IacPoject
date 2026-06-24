@@ -3,10 +3,10 @@ terraform {
 
   cloud {
     organization = "HCLIT"
-    workspaces {
-       prefix = "statefile-"
 
-  }
+    workspaces {
+      prefix = "statefile-"
+    }
   }
 
   required_providers {
@@ -16,7 +16,6 @@ terraform {
     }
   }
 }
-
 
 provider "azurerm" {
   features {}
