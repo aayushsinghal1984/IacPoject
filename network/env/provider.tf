@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.5.0"
 
   cloud {
-    organization = "UL-ULSE"
+    organization = "HCLIT"
   }
 
   required_providers {
