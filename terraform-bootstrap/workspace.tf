@@ -1,4 +1,4 @@
 resource "tfe_workspace" "workspace" {
-  name = "statefile-dev"
+  name = "statefile-${var.environment}"
   organization = "HCLIT"
 }
