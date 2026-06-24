@@ -34,7 +34,8 @@ jobs:
       image: ubuntu:latest
     
     env:
-      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+     TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+     TF_VAR_tfe_token: ${{ secrets.TF_API_TOKEN }}
   
 
     steps:
@@ -58,18 +59,11 @@ jobs:
           TFE_TOKEN: ${{ secrets.TF_API_TOKEN }}
         run: |
           echo "Length=${#TF_TOKEN_app_terraform_io}"
-      - name: Terraform Plan
+          
+      - name: Terraform Plan       
         working-directory: ${{ inputs.working_directory }}
-        env:
-          TFE_TOKEN: ${{ secrets.TF_API_TOKEN }}
-        run: |
-          terraform plan \
-          -var="organization=${{ inputs.organization }}" \
-          -var="workspace_name=${{ inputs.workspace_name }}" \
-          -var="azure_client_id=${{ secrets.ARM_CLIENT_ID }}" \
-          -var="azure_tenant_id=${{ secrets.ARM_TENANT_ID }}" \
-          -var="azure_subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}"
-          -var="tfe_token=$TFE_TOKEN"
+        run: terraform plan
+        
       - name: Terraform Apply
         working-directory: ${{ inputs.working_directory }}
         env:
