@@ -8,4 +8,8 @@ variable "workspace_name" {
 variable "organization" {
   type = string
 }
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+}
 
