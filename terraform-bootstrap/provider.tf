@@ -1,7 +1,8 @@
 terraform {
   cloud {
     organization = "HCLIT"
-    workspaces {   
+    workspaces {
+     tags = ["statefile"]
     }
   }
 }
