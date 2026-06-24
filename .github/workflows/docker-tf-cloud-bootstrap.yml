@@ -74,6 +74,7 @@ jobs:
             -input=false \
             -no-color \
             -out=tfplan \
+            -var="environment=${{ inputs.environment }}" \
             -var="organization=${{ inputs.organization }}" \
             -var="workspace_name=${{ inputs.workspace_name }}"
 
