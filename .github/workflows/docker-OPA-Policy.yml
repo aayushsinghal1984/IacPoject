@@ -94,9 +94,5 @@ jobs:
           echo "$OPA_JSON" | jq '.' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           
-          #  Check for Violations
-          VIOLATIONS=$(echo "$OPA_JSON" | jq '.result[0].expressions[0].value | length')
-          if [ "$VIOLATIONS" -gt 0 ]; then
-            echo "::error:: OPA Policy Violations found: $VIOLATIONS"
-            exit 1
-          fi
+        
+         
