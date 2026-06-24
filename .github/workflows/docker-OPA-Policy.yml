@@ -64,6 +64,7 @@ jobs:
           echo "Running OPA Evaluation..."
           OPA_JSON=$(opa eval -d policies -i tfplan.json "data.azure.naming" 2>&1)
           echo "$OPA_JSON"
+          set -e
           
           #Log JSON Result
           echo "$OPA_JSON" | jq '.'
