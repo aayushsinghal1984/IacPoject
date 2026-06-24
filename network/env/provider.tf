@@ -4,7 +4,8 @@ terraform {
   cloud {
     organization = "HCLIT"
     workspaces {
-    name = "statefile-"
+       prefix = "statefile-"
+
   }
   }
 
