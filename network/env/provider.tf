@@ -5,7 +5,7 @@ terraform {
     organization = "HCLIT"
 
     workspaces {
-      prefix = "statefile-"
+  
     }
   }
 
