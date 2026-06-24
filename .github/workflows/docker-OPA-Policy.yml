@@ -78,7 +78,7 @@ jobs:
           set +e
           
           echo "Running OPA Evaluation..."
-          OPA_JSON=$(opa eval -d policies -i tfplan.json "data.azure.naming" 2>&1)
+          OPA_JSON=$(opa eval -f json -d policies -i tfplan.json "data")
           echo "$OPA_JSON"
           set -e
           
