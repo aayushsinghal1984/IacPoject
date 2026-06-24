@@ -1,4 +1,4 @@
-name: terraform-cloud-bootstrap-pipeline
+name: "terraform-cloud-bootstrap-pipeline"
 
 on:
   workflow_dispatch:
