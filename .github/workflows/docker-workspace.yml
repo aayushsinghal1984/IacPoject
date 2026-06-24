@@ -47,3 +47,19 @@ jobs:
         run: terraform init -input=false
         env:    
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      - name: Terraform Plan
+        run: |
+          terraform plan -no-color -out=tfplan > plan.txt
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      
+      - name: Add Plan Summary
+        run: |
+          echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat plan.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+
+
+    
