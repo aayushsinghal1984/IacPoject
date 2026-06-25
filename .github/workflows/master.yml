@@ -5,6 +5,6 @@ on:
 
 jobs:
   lint:
-    uses: aayuORG1/project1/.github/workflows/docker-tflint.yml@main
+    uses: aayuORG1/project1/.github/workflows/testmain.yml@main
     with:
       environment: dev
