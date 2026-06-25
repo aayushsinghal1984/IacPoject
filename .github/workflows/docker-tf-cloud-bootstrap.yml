@@ -17,10 +17,10 @@ on:
         required: true
         type: string
 
-      workspace_name:
-         description: "Terraform Cloud workspace name"
-         required: true
-         type: string
+     # workspace_name:
+     #    description: "Terraform Cloud workspace name"
+     #    required: true
+     #    type: string
 
       working_directory:
         description: "Terraform working directory"
@@ -38,7 +38,7 @@ jobs:
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       TF_VAR_tfe_token: ${{ secrets.TF_API_TOKEN }}
-      TF_VAR_workspace_name: ${{ inputs.workspace_name }}
+      TF_VAR_workspace_name: statefile-${{ inputs.environment }}
 
     steps:
       - name: Install Packages
