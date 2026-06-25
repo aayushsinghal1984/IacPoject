@@ -65,8 +65,48 @@ jobs:
 
       - name: Terraform Validate
         working-directory: ${{ inputs.working_directory }}
-        run: terraform validate
+        run: terraform validate      
 
+
+      - name: Check and Import Existing Workspace
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          set -e
+  
+          WORKSPACE_NAME="${{ inputs.workspace_name }}"
+          ORG_NAME="${{ inputs.organization }}"
+  
+          echo "Checking if workspace exists in Terraform Cloud..."
+  
+          HTTP_CODE=$(curl -s \
+            -o response.json \
+            -w "%{http_code}" \
+            -H "Authorization: Bearer $TF_TOKEN_app_terraform_io" \
+            -H "Content-Type: application/vnd.api+json" \
+            "https://app.terraform.io/api/v2/organizations/${ORG_NAME}/workspaces/${WORKSPACE_NAME}")
+  
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Workspace exists."
+  
+            if terraform state show tfe_workspace.workspace >/dev/null 2>&1; then
+              echo "Workspace already managed in state."
+            else
+              echo "Importing existing workspace..."
+              terraform import \
+                -input=false \
+                tfe_workspace.workspace \
+                "${ORG_NAME}/${WORKSPACE_NAME}" || true
+            fi
+  
+          elif [ "$HTTP_CODE" = "404" ]; then
+            echo "Workspace does not exist. Terraform will create it."
+  
+          else
+            echo "Failed to query Terraform Cloud API."
+            cat response.json
+            exit 1
+          fi
+                
       - name: Terraform Plan
         working-directory: ${{ inputs.working_directory }}
         run: |
@@ -77,47 +117,6 @@ jobs:
             -var="environment=${{ inputs.environment }}" \
             -var="organization=${{ inputs.organization }}" \
             -var="workspace_name=${{ inputs.workspace_name }}"
-
-
-            - name: Check and Import Existing Workspace
-              working-directory: ${{ inputs.working_directory }}
-              run: |
-                set -e
-      
-                WORKSPACE_NAME="${{ inputs.workspace_name }}"
-                ORG_NAME="${{ inputs.organization }}"
-      
-                echo "Checking if workspace exists in Terraform Cloud..."
-      
-                HTTP_CODE=$(curl -s \
-                  -o response.json \
-                  -w "%{http_code}" \
-                  -H "Authorization: Bearer $TF_TOKEN_app_terraform_io" \
-                  -H "Content-Type: application/vnd.api+json" \
-                  "https://app.terraform.io/api/v2/organizations/${ORG_NAME}/workspaces/${WORKSPACE_NAME}")
-      
-                if [ "$HTTP_CODE" = "200" ]; then
-                  echo "Workspace exists."
-      
-                  if terraform state show tfe_workspace.workspace >/dev/null 2>&1; then
-                    echo "Workspace already managed in state."
-                  else
-                    echo "Importing existing workspace..."
-                    terraform import \
-                      -input=false \
-                      tfe_workspace.workspace \
-                      "${ORG_NAME}/${WORKSPACE_NAME}" || true
-                  fi
-      
-                elif [ "$HTTP_CODE" = "404" ]; then
-                  echo "Workspace does not exist. Terraform will create it."
-      
-                else
-                  echo "Failed to query Terraform Cloud API."
-                  cat response.json
-                  exit 1
-                fi
-
       - name: Terraform Apply
         working-directory: ${{ inputs.working_directory }}
         run: |
