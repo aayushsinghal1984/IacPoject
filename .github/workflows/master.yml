@@ -73,46 +73,4 @@ jobs:
       environment: ${{ inputs.environment }}
       working_directory: ${{ inputs.working_directory }}
 
-  test:
-    name: "Stage 3 · Terraform Test"
-    needs: [lint]
-    if: always() && !failure() && !cancelled()
-    uses: aayuORG1/project1/.github/workflows/docker-tftest-pipeline.yml@main
-    with:
-      environment: ${{ inputs.environment }}
-      working_directory: ${{ inputs.working_directory }}
-    secrets: inherit
-
-  plan:
-    name: "Stage 4 · Terraform Plan"
-    needs: [test]
-    if: always() && !failure() && !cancelled()
-    uses: aayuORG1/project1/.github/workflows/docker-tf-plan.yml@main
-    with:
-      environment: ${{ inputs.environment }}
-      working_directory: ${{ inputs.working_directory }}
-    secrets: inherit
-
-  opa:
-    name: "Stage 5b · OPA Policy Evaluation"
-    needs: [plan]
-    if: always() && !failure() && !cancelled()
-    uses: aayuORG1/project1/.github/workflows/docker-OPA-Policy.yml@main
-    with:
-      environment: ${{ inputs.environment }}
-      working_directory: ${{ inputs.working_directory }}
-    secrets: inherit
-
-  apply:
-    name: "Stage 6 · Terraform Apply"
-    needs: [tfsec, opa]
-    if: |
-      always() &&
-      !failure() &&
-      !cancelled() &&
-      inputs.skip_apply == 'false'
-    uses: aayuORG1/project1/.github/workflows/docker-tf-apply.yml@main
-    with:
-      environment: ${{ inputs.environment }}
-      working_directory: ${{ inputs.working_directory }}
-    secrets: inherit
+ 
