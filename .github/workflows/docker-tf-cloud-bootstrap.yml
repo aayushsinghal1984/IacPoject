@@ -17,10 +17,10 @@ on:
         required: true
         type: string
 
-      workspace_name:
-        description: "Terraform Cloud workspace name"
-        required: true
-        type: string
+     # workspace_name:
+     #    description: "Terraform Cloud workspace name"
+     #   required: true
+     #   type: string
 
       working_directory:
         description: "Terraform working directory"
