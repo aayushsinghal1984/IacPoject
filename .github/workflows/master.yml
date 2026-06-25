@@ -1,28 +1,6 @@
 name: "Master Terraform CI/CD Pipeline"
 
-# ============================================================
-# MASTER CALLER WORKFLOW
-# Orchestrates the full Terraform CI/CD pipeline by calling
-# all individual reusable (called) workflows in sequence.
-#
-# Called Workflow Files (must be in .github/workflows/):
-#   - called-tf-cloud-bootstrap.yml
-#   - called-tflint.yml
-#   - called-tftest.yml
-#   - called-tf-plan.yml
-#   - called-tfsec.yml
-#   - called-opa-policy.yml
-#   - called-tf-apply.yml
-#
-# Pipeline Stages:
-#   1. Bootstrap   → Terraform Cloud workspace setup
-#   2. Lint        → TFLint static analysis
-#   3. Test        → terraform test (.tftest.hcl)
-#   4. Plan        → terraform plan + artifact upload
-#   5. Sec Scan    → TFSec security scan (parallel with OPA)
-#   6. OPA         → OPA policy evaluation (parallel with TFSec)
-#   7. Apply       → terraform apply (only after all checks pass)
-# ============================================================
+
 
 on:
   workflow_dispatch:
@@ -40,7 +18,7 @@ on:
         description: "Terraform Cloud organization name"
         required: true
         type: string
-        default: "HCL-TERRA-TEAM"
+        default: "HCLIT"
 
       working_directory:
         description: "Terraform working directory (default: repo root)"
@@ -66,16 +44,14 @@ on:
           - "false"
           - "true"
 
-# ============================================================
-# JOBS
-# ============================================================
+
 jobs:
 
   # ── Stage 1: Bootstrap ──────────────────────────────────
   bootstrap:
     name: "Stage 1 · TF Cloud Bootstrap"
     if: ${{ inputs.skip_bootstrap == 'false' }}
-    uses: ./.github/workflows/called-tf-cloud-bootstrap.yml
+    uses: aayuORG1/project1/.github/workflows/docker-tf-cloud-bootstrap.yml@main
     with:
       environment: ${{ inputs.environment }}
       organization: ${{ inputs.organization }}
@@ -88,7 +64,17 @@ jobs:
     name: "Stage 2 · TFLint"
     needs: [bootstrap]
     if: always() && !failure() && !cancelled()
-    uses: ./.github/workflows/called-tflint.yml
+    uses: aayuORG1/project1/.github/workflows/docker-tflint.yml@main
+    with:
+      environment: ${{ inputs.environment }}
+      working_directory: ${{ inputs.working_directory }}
+      
+   # ── Stage 2a: TFSec (parallel with OPA) ─────────────────
+  tfsec:
+    name: "Stage 5a · TFSec Scan"
+    needs: [bootstrap]
+    if: always() && !failure() && !cancelled()
+    uses: aayuORG1/project1/.github/workflows/docker-tfsec.yml@main
     with:
       environment: ${{ inputs.environment }}
       working_directory: ${{ inputs.working_directory }}
@@ -98,47 +84,34 @@ jobs:
     name: "Stage 3 · Terraform Test"
     needs: [lint]
     if: always() && !failure() && !cancelled()
-    uses: ./.github/workflows/called-tftest.yml
+    uses: aayuORG1/project1/.github/workflows/docker-tftest-pipeline.yml@main
+
     with:
       environment: ${{ inputs.environment }}
       working_directory: ${{ inputs.working_directory }}
-    secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+    secrets: inherit
 
   # ── Stage 4: Plan ────────────────────────────────────────
   plan:
     name: "Stage 4 · Terraform Plan"
     needs: [test]
     if: always() && !failure() && !cancelled()
-    uses: ./.github/workflows/called-tf-plan.yml
-    with:
-      environment: ${{ inputs.environment }}
-      working_directory: ${{ inputs.working_directory }}
-    secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+    uses: aayuORG1/project1/.github/workflows/docker-tf-plan.yml@main
 
-  # ── Stage 5a: TFSec (parallel with OPA) ─────────────────
-  tfsec:
-    name: "Stage 5a · TFSec Scan"
-    needs: [plan]
-    if: always() && !failure() && !cancelled()
-    uses: ./.github/workflows/called-tfsec.yml
+
     with:
       environment: ${{ inputs.environment }}
       working_directory: ${{ inputs.working_directory }}
+    secrets: inherit
+
+ 
 
   # ── Stage 5b: OPA Policy (parallel with TFSec) ──────────
   opa:
     name: "Stage 5b · OPA Policy Evaluation"
     needs: [plan]
     if: always() && !failure() && !cancelled()
-    uses: ./.github/workflows/called-opa-policy.yml
+    uses: aayuORG1/project1/.github/workflows/docker-OPA-Policy.yml@main
     with:
       environment: ${{ inputs.environment }}
       working_directory: ${{ inputs.working_directory }}
@@ -154,13 +127,5 @@ jobs:
       !failure() &&
       !cancelled() &&
       inputs.skip_apply == 'false'
-    uses: ./.github/workflows/called-tf-apply.yml
-    with:
-      environment: ${{ inputs.environment }}
-      working_directory: ${{ inputs.working_directory }}
-    secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    uses: aayuORG1/project1/.github/workflows/docker-tf-apply.yml@main
+    secrets: inherit
