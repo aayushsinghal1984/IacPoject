@@ -67,7 +67,19 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         run: terraform validate      
 
+      - name: Debug Workspace Lookup
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          WORKSPACE_NAME="${{ inputs.workspace_name }}"
+          ORG_NAME="${{ inputs.organization }}"
 
+          echo "Workspace: $WORKSPACE_NAME"
+          echo "Organization: $ORG_NAME"
+
+          curl -s \
+            -H "Authorization: Bearer $TF_TOKEN_app_terraform_io" \
+            -H "Content-Type: application/vnd.api+json" \
+            "https://app.terraform.io/api/v2/organizations/${ORG_NAME}/workspaces/${WORKSPACE_NAME}"
       - name: Check and Import Existing Workspace
         working-directory: ${{ inputs.working_directory }}
         run: |
