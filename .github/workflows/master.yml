@@ -1,7 +1,5 @@
 name: "Master Terraform CI/CD Pipeline"
 
-
-
 on:
   workflow_dispatch:
     inputs:
@@ -21,13 +19,13 @@ on:
         default: "HCLIT"
 
       working_directory:
-        description: "Terraform working directory (default: repo root)"
+        description: "Terraform working directory"
         required: false
         default: "."
         type: string
 
       skip_bootstrap:
-        description: "Skip TF Cloud Bootstrap? (set true if workspace already exists)"
+        description: "Skip TF Cloud Bootstrap?"
         required: false
         default: "false"
         type: choice
@@ -36,7 +34,7 @@ on:
           - "true"
 
       skip_apply:
-        description: "Skip Terraform Apply? (plan-only run)"
+        description: "Skip Terraform Apply?"
         required: false
         default: "false"
         type: choice
@@ -44,10 +42,8 @@ on:
           - "false"
           - "true"
 
-
 jobs:
 
-  # ── Stage 1: Bootstrap ──────────────────────────────────
   bootstrap:
     name: "Stage 1 · TF Cloud Bootstrap"
     if: ${{ inputs.skip_bootstrap == 'false' }}
@@ -59,7 +55,6 @@ jobs:
     secrets:
       TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
-  # ── Stage 2: Lint ────────────────────────────────────────
   lint:
     name: "Stage 2 · TFLint"
     needs: [bootstrap]
@@ -68,10 +63,9 @@ jobs:
     with:
       environment: ${{ inputs.environment }}
       working_directory: ${{ inputs.working_directory }}
-      
-   # ── Stage 2a: TFSec (parallel with OPA) ─────────────────
+
   tfsec:
-    name: "Stage 5a · TFSec Scan"
+    name: "Stage 2a · TFSec Scan"
     needs: [bootstrap]
     if: always() && !failure() && !cancelled()
     uses: aayuORG1/project1/.github/workflows/docker-tfsec.yml@main
@@ -79,34 +73,26 @@ jobs:
       environment: ${{ inputs.environment }}
       working_directory: ${{ inputs.working_directory }}
 
-  # ── Stage 3: Test ────────────────────────────────────────
   test:
     name: "Stage 3 · Terraform Test"
     needs: [lint]
     if: always() && !failure() && !cancelled()
     uses: aayuORG1/project1/.github/workflows/docker-tftest-pipeline.yml@main
-
     with:
       environment: ${{ inputs.environment }}
       working_directory: ${{ inputs.working_directory }}
     secrets: inherit
 
-  # ── Stage 4: Plan ────────────────────────────────────────
   plan:
     name: "Stage 4 · Terraform Plan"
     needs: [test]
     if: always() && !failure() && !cancelled()
     uses: aayuORG1/project1/.github/workflows/docker-tf-plan.yml@main
-
-
     with:
       environment: ${{ inputs.environment }}
       working_directory: ${{ inputs.working_directory }}
     secrets: inherit
 
- 
-
-  # ── Stage 5b: OPA Policy (parallel with TFSec) ──────────
   opa:
     name: "Stage 5b · OPA Policy Evaluation"
     needs: [plan]
@@ -115,10 +101,8 @@ jobs:
     with:
       environment: ${{ inputs.environment }}
       working_directory: ${{ inputs.working_directory }}
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
-  # ── Stage 6: Apply ───────────────────────────────────────
   apply:
     name: "Stage 6 · Terraform Apply"
     needs: [tfsec, opa]
@@ -128,4 +112,7 @@ jobs:
       !cancelled() &&
       inputs.skip_apply == 'false'
     uses: aayuORG1/project1/.github/workflows/docker-tf-apply.yml@main
+    with:
+      environment: ${{ inputs.environment }}
+      working_directory: ${{ inputs.working_directory }}
     secrets: inherit
