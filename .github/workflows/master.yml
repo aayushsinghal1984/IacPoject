@@ -2,75 +2,9 @@ name: "Master Terraform CI/CD Pipeline"
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Target deployment environment"
-        required: true
-        type: choice
-        options:
-          - dev
-          - qa
-          - prod
-
-      organization:
-        description: "Terraform Cloud organization name"
-        required: true
-        type: string
-        default: "HCLIT"
-
-      working_directory:
-        description: "Terraform working directory"
-        required: false
-        default: "."
-        type: string
-
-      skip_bootstrap:
-        description: "Skip TF Cloud Bootstrap?"
-        required: false
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
-
-      skip_apply:
-        description: "Skip Terraform Apply?"
-        required: false
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
 
 jobs:
-
-  bootstrap:
-    name: "Stage 1 · TF Cloud Bootstrap"
-    if: ${{ inputs.skip_bootstrap == 'false' }}
-    uses: aayuORG1/project1/.github/workflows/docker-tf-cloud-bootstrap.yml@main
-    with:
-      environment: ${{ inputs.environment }}
-      organization: ${{ inputs.organization }}
-      working_directory: ${{ inputs.working_directory }}
-    secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
-
   lint:
-    name: "Stage 2 · TFLint"
-    needs: [bootstrap]
-    if: always() && !failure() && !cancelled()
     uses: aayuORG1/project1/.github/workflows/docker-tflint.yml@main
     with:
-      environment: ${{ inputs.environment }}
-      working_directory: ${{ inputs.working_directory }}
-
-  tfsec:
-    name: "Stage 2a · TFSec Scan"
-    needs: [bootstrap]
-    if: always() && !failure() && !cancelled()
-    uses: aayuORG1/project1/.github/workflows/docker-tfsec.yml@main
-    with:
-      environment: ${{ inputs.environment }}
-      working_directory: ${{ inputs.working_directory }}
-
- 
+      environment: dev
