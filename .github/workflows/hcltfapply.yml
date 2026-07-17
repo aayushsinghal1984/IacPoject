@@ -1,0 +1,88 @@
+name: HCL Tf Apply
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        type: string
+
+      working_directory:
+        description: "Terraform working directory"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+ 
+jobs:
+  terraform-apply:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: terraform apply
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MODULE_PATH="${{ inputs.working_directory }}/example"
+          MODULE_NAME="${{ inputs.working_directory }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+
+          echo "-------------------------------------"
+          echo "Running Terraform Apply"
+          echo "-------------------------------------"
+          echo "Working Directory: ${MODULE_PATH}"
+
+          if [ ! -d "${MODULE_PATH}" ]; then
+            echo "Directory does not exist: ${MODULE_PATH}"
+            exit 1
+          fi
+
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace:Z" \
+            -w "/workspace/${MODULE_PATH}" \
+            -e TF_TOKEN_app_terraform_io \
+            -e AZURE_CLIENT_ID \
+            -e AZURE_TENANT_ID \
+            -e AZURE_SUBSCRIPTION_ID \
+            -e AZURE_USE_OIDC \
+            -e ACTIONS_ID_TOKEN_REQUEST_TOKEN \
+            -e ACTIONS_ID_TOKEN_REQUEST_URL \
+            --entrypoint /bin/sh \
+            hashicorp/terraform:1.11.0 \
+            -c "
+              export ARM_CLIENT_ID=\${AZURE_CLIENT_ID}
+              export ARM_TENANT_ID=\${AZURE_TENANT_ID}
+              export ARM_SUBSCRIPTION_ID=\${AZURE_SUBSCRIPTION_ID}
+              export ARM_USE_OIDC=true
+        
+              echo 'Terraform Version'
+              terraform version
+        
+              echo 'Terraform Init'
+              terraform init -input=false -no-color
+        
+              echo 'Terraform Apply'
+              terraform apply -input=false -no-color -auto-approve
+            "
+          
+          echo ""
+          echo "Deployment completed successfully"
+          
+          {
+            echo "# Terraform Apply Summary"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| Module | ${MODULE_NAME} |"
+            echo "| Environment | ${ENVIRONMENT} |"
+            echo "| Status | Infrastructure Applied |"
+            echo ""
+            echo "Infrastructure changes applied successfully."
+          } >> "$GITHUB_STEP_SUMMARY"
