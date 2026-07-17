@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Push Container Image
 
 on:
   workflow_dispatch:
@@ -18,28 +18,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHUB_TOKEN }}
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable=true
-            type=sha,format=long
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GHUB_TOKEN }}" | podman login ghcr.io \
+            -u ${{ github.actor }} \
+            --password-stdin
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build Image
+        run: |
+          podman build \
+            -f Dockerfile \
+            -t ghcr.io/${{ env.IMAGE_NAME }}:latest \
+            -t ghcr.io/${{ env.IMAGE_NAME }}:sha-${{ github.sha }} \
+            .
+
+      - name: Push Image
+        run: |
+          podman push ghcr.io/${{ env.IMAGE_NAME }}:latest
+          podman push ghcr.io/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+
+      - name: Job Summary
+        if: always()
+        run: |
+          echo "# Container Build & Push" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ghcr.io/${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tags:** latest, sha-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry:** ghcr.io" >> $GITHUB_STEP_SUMMARY
