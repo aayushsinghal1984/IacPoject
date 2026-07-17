@@ -1,179 +1,142 @@
-name: OPA validation
+name: HCL Tf Apply
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       environment:
-        description: "Target Environment"
+        description: "Target deployment environment"
         required: true
-        type: string
-
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
       working_directory:
-        description: "Selected Module"
+        description: "Terraform working directory"
         required: true
         type: string
-
-      policy_repository:
-        description: "OPA Policy Repository"
-        required: false
-        type: string
-        default: "ul-iac-modules/opa-policies"
-
-      policy_ref:
-        description: "OPA Policy Branch"
-        required: false
-        type: string
-        default: "development"
-
-    secrets:
-      GH_PAT:
-        required: true
 
 permissions:
   contents: read
   id-token: write
+  actions: read
 
 jobs:
-  validate-policy-as-code:
-    runs-on: iac-modules
+  terraform-apply:
+    runs-on: self-hosted
+    environment: ${{ inputs.environment }}
 
     steps:
-      - name: Checkout OPA Policies Repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.policy_repository }}
-          ref: ${{ inputs.policy_ref }}
-          token: ${{ secrets.GH_PAT }}
-          path: opa-policies
 
-      - name: Download Terraform Plan Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-plan-${{ inputs.working_directory }}
-          path: artifact
-
-      - name: Verify OPA Policies
-        shell: bash
+      - name: Login to GHCR
         run: |
-          echo "Available Policies:"
-          find opa-policies -type f
+          echo "${{ secrets.GHUB_TOKEN }}" | podman login ghcr.io \
+            -u ${{ github.actor }} \
+            --password-stdin
 
-      - name: Resolve Policy
-        id: policy
-        shell: bash
+      - name: Pull Image (only if not present)
         run: |
-          MODULE="${{ inputs.working_directory }}"
-          POLICY="opa-policies/${MODULE}.rego"
-
-          echo "Policy Path: $POLICY"
-
-          if [ -f "$POLICY" ]; then
-            echo "policy_exists=true" >> "$GITHUB_OUTPUT"
-            echo "policy_path=$POLICY" >> "$GITHUB_OUTPUT"
+          if ! podman image exists ghcr.io/aayushsinghal1984/ulseworkflowcontainer:latest; then
+            echo "Image not found locally, pulling..."
+            podman pull ghcr.io/aayushsinghal1984/ulseworkflowcontainer:latest
           else
-            echo "policy_exists=false" >> "$GITHUB_OUTPUT"
+            echo "Image already exists locally, skipping pull."
           fi
 
-      - name: Run OPA Validation
-        id: opa
-        if: ${{ steps.policy.outputs.policy_exists == 'true' }}
-        shell: bash
+      - name: Get Latest Plan Run ID
+        id: get_run
         run: |
-          POLICY="${{ steps.policy.outputs.policy_path }}"
+          RUN_ID=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.GHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/hclplan.yml/runs?status=success&per_page=1" \
+            | jq -r '.workflow_runs[0].id')
 
-          set +e
-
-          RESULT=$(docker run --rm \
-            -v "${{ github.workspace }}":/workspace:Z \
-            -w /workspace \
-            docker.io/openpolicyagent/opa:1.0.0-debug \
-            eval \
-            --format raw \
-            --data "$POLICY" \
-            --input artifact/tfplan.json \
-            "data.terraform.result")
-
-          RC=$?
-
-          echo "-------------------------------------"
-          echo "OPA Result"
-          echo "====================================="
-          echo "$RESULT"
-
-          if [ $RC -ne 0 ]; then
-            echo "OPA execution failed"
-            exit $RC
-          fi
-
-          {
-            echo "opa_result<<EOF"
-            echo "$RESULT"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-          DENY_COUNT=$(echo "$RESULT" | jq '.deny | length')
-          WARN_COUNT=$(echo "$RESULT" | jq '.warn | length')
-
-          echo "-------------------------------------"
-          echo "Policy Summary"
-          echo "-------------------------------------"
-          echo "Module       : ${{ inputs.working_directory }}"
-          echo "Deny Count   : $DENY_COUNT"
-          echo "Warm Count   : $WARN_COUNT"
-
-          if [ "$WARN_COUNT" -gt 0 ]; then
-            echo "-------------------------------------"
-            echo "Policy Warnings"
-            echo "-------------------------------------"
-            echo "$RESULT" | jq '.warn'
-          fi
-
-          if [ "$DENY_COUNT" -gt 0 ]; then
-            echo "-------------------------------------"
-            echo "Policy Violations"
-            echo "-------------------------------------"
-            echo "$RESULT" | jq '.deny'
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "ERROR: No successful Plan run found"
             exit 1
           fi
+          echo "Found Plan Run ID: $RUN_ID"
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
 
-          echo "OPA validation passed"
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ inputs.environment }}
+          path: ${{ github.workspace }}/${{ inputs.working_directory }}
+          github-token: ${{ secrets.GHUB_TOKEN }}
+          run-id: ${{ steps.get_run.outputs.run_id }}
 
-      - name: Publish Summary
-        if: ${{ steps.policy.outputs.policy_exists == 'true' }}
+      - name: Verify Plan Files
         shell: bash
         run: |
-          RESULT='${{ steps.opa.outputs.opa_result }}'
-          
-          if [ -z "$RESULT" ]; then
-            DENY_COUNT=0
-            WARN_COUNT=0
-          else
-            DENY_COUNT=$(echo "$RESULT" | jq '.deny | length // 0')
-            WARN_COUNT=$(echo "$RESULT" | jq '.warn | length // 0')
+          echo "Files in plan directory:"
+          ls -lh "${{ github.workspace }}/${{ inputs.working_directory }}/"
+
+          if [ ! -f "${{ github.workspace }}/${{ inputs.working_directory }}/tfplan" ]; then
+            echo "ERROR: tfplan not found"
+            exit 1
           fi
-          
-          {
-            echo "# Terraform OPA Summary"
-            echo ""
-            echo "| Property | Value |"
-            echo "|----------|-------|"
-            echo "| Module | ${{ inputs.working_directory }} |"
-            echo "| Deny Violations | $DENY_COUNT |"
-            echo "| Warnings | $WARN_COUNT |"
-            echo "| Status | Completed |"
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "tfplan found — ready for apply"
 
-      - name: No Policy Found Message
-        if: ${{ steps.policy.outputs.policy_exists == 'false' }}
+      - name: Get OIDC Token
+        id: oidc
+        run: |
+          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" \
+            | jq -r '.value')
+          echo "::add-mask::$OIDC_TOKEN"
+          echo "oidc_token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Terraform Apply
         shell: bash
         run: |
-          echo "No matching OPA policy found."
+          set -euo pipefail
+
+          MODULE_PATH="${{ inputs.working_directory }}"
+          MODULE_NAME="${{ inputs.working_directory }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+
+          echo "-------------------------------------"
+          echo "Running Terraform Apply"
+          echo "-------------------------------------"
+          echo "Working Directory: ${MODULE_PATH}"
+
+          podman run --rm \
+            -v "${{ github.workspace }}:/workspace:Z" \
+            -w "/workspace/${MODULE_PATH}" \
+            -e TF_TOKEN_app_terraform_io="${{ secrets.TF_API_TOKEN }}" \
+            -e ARM_CLIENT_ID="${{ secrets.ARM_CLIENT_ID }}" \
+            -e ARM_TENANT_ID="${{ secrets.ARM_TENANT_ID }}" \
+            -e ARM_SUBSCRIPTION_ID="${{ secrets.ARM_SUBSCRIPTION_ID }}" \
+            -e ARM_USE_OIDC=true \
+            -e ARM_OIDC_TOKEN="${{ steps.oidc.outputs.oidc_token }}" \
+            --entrypoint /bin/sh \
+            ghcr.io/aayushsinghal1984/ulseworkflowcontainer:latest \
+            -c "
+              echo 'Terraform Version'
+              terraform version
+
+              echo 'Terraform Init'
+              terraform init -input=false -no-color
+
+              echo 'Terraform Apply'
+              terraform apply -input=false -no-color tfplan
+            "
+
+          echo ""
+          echo "Deployment completed successfully"
+
           {
-            echo "# Terraform OPA Summary"
+            echo "# Terraform Apply Summary"
             echo ""
             echo "| Property | Value |"
             echo "|----------|-------|"
-            echo "| Module | ${{ inputs.working_directory }} |"
-            echo "| Policy | Not Found |"
-            echo "| Status | Skipped |"
+            echo "| Module | ${MODULE_NAME} |"
+            echo "| Environment | ${ENVIRONMENT} |"
+            echo "| Status | Infrastructure Applied |"
+            echo ""
+            echo "Infrastructure changes applied successfully."
           } >> "$GITHUB_STEP_SUMMARY"
