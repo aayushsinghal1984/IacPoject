@@ -1,0 +1,179 @@
+name: OPA validation
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target Environment"
+        required: true
+        type: string
+
+      working_directory:
+        description: "Selected Module"
+        required: true
+        type: string
+
+      policy_repository:
+        description: "OPA Policy Repository"
+        required: false
+        type: string
+        default: "ul-iac-modules/opa-policies"
+
+      policy_ref:
+        description: "OPA Policy Branch"
+        required: false
+        type: string
+        default: "development"
+
+    secrets:
+      GH_PAT:
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate-policy-as-code:
+    runs-on: iac-modules
+
+    steps:
+      - name: Checkout OPA Policies Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.policy_repository }}
+          ref: ${{ inputs.policy_ref }}
+          token: ${{ secrets.GH_PAT }}
+          path: opa-policies
+
+      - name: Download Terraform Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-${{ inputs.working_directory }}
+          path: artifact
+
+      - name: Verify OPA Policies
+        shell: bash
+        run: |
+          echo "Available Policies:"
+          find opa-policies -type f
+
+      - name: Resolve Policy
+        id: policy
+        shell: bash
+        run: |
+          MODULE="${{ inputs.working_directory }}"
+          POLICY="opa-policies/${MODULE}.rego"
+
+          echo "Policy Path: $POLICY"
+
+          if [ -f "$POLICY" ]; then
+            echo "policy_exists=true" >> "$GITHUB_OUTPUT"
+            echo "policy_path=$POLICY" >> "$GITHUB_OUTPUT"
+          else
+            echo "policy_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run OPA Validation
+        id: opa
+        if: ${{ steps.policy.outputs.policy_exists == 'true' }}
+        shell: bash
+        run: |
+          POLICY="${{ steps.policy.outputs.policy_path }}"
+
+          set +e
+
+          RESULT=$(docker run --rm \
+            -v "${{ github.workspace }}":/workspace:Z \
+            -w /workspace \
+            docker.io/openpolicyagent/opa:1.0.0-debug \
+            eval \
+            --format raw \
+            --data "$POLICY" \
+            --input artifact/tfplan.json \
+            "data.terraform.result")
+
+          RC=$?
+
+          echo "-------------------------------------"
+          echo "OPA Result"
+          echo "====================================="
+          echo "$RESULT"
+
+          if [ $RC -ne 0 ]; then
+            echo "OPA execution failed"
+            exit $RC
+          fi
+
+          {
+            echo "opa_result<<EOF"
+            echo "$RESULT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          DENY_COUNT=$(echo "$RESULT" | jq '.deny | length')
+          WARN_COUNT=$(echo "$RESULT" | jq '.warn | length')
+
+          echo "-------------------------------------"
+          echo "Policy Summary"
+          echo "-------------------------------------"
+          echo "Module       : ${{ inputs.working_directory }}"
+          echo "Deny Count   : $DENY_COUNT"
+          echo "Warm Count   : $WARN_COUNT"
+
+          if [ "$WARN_COUNT" -gt 0 ]; then
+            echo "-------------------------------------"
+            echo "Policy Warnings"
+            echo "-------------------------------------"
+            echo "$RESULT" | jq '.warn'
+          fi
+
+          if [ "$DENY_COUNT" -gt 0 ]; then
+            echo "-------------------------------------"
+            echo "Policy Violations"
+            echo "-------------------------------------"
+            echo "$RESULT" | jq '.deny'
+            exit 1
+          fi
+
+          echo "OPA validation passed"
+
+      - name: Publish Summary
+        if: ${{ steps.policy.outputs.policy_exists == 'true' }}
+        shell: bash
+        run: |
+          RESULT='${{ steps.opa.outputs.opa_result }}'
+          
+          if [ -z "$RESULT" ]; then
+            DENY_COUNT=0
+            WARN_COUNT=0
+          else
+            DENY_COUNT=$(echo "$RESULT" | jq '.deny | length // 0')
+            WARN_COUNT=$(echo "$RESULT" | jq '.warn | length // 0')
+          fi
+          
+          {
+            echo "# Terraform OPA Summary"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| Module | ${{ inputs.working_directory }} |"
+            echo "| Deny Violations | $DENY_COUNT |"
+            echo "| Warnings | $WARN_COUNT |"
+            echo "| Status | Completed |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: No Policy Found Message
+        if: ${{ steps.policy.outputs.policy_exists == 'false' }}
+        shell: bash
+        run: |
+          echo "No matching OPA policy found."
+          {
+            echo "# Terraform OPA Summary"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| Module | ${{ inputs.working_directory }} |"
+            echo "| Policy | Not Found |"
+            echo "| Status | Skipped |"
+          } >> "$GITHUB_STEP_SUMMARY"
