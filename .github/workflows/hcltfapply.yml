@@ -15,10 +15,6 @@ on:
         description: "Terraform working directory"
         required: true
         type: string
-      plan_run_id:
-        description: "Run ID of the Plan workflow (to download tfplan artifact)"
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -52,19 +48,16 @@ jobs:
       - name: Download Plan Artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-${{ inputs.environment }}-${{ inputs.plan_run_id }}
+          name: tfplan-${{ inputs.environment }}
           path: ${{ github.workspace }}/${{ inputs.working_directory }}
-          github-token: ${{ secrets.GHUB_TOKEN }}
-          run-id: ${{ inputs.plan_run_id }}
 
       - name: Verify Plan Files
         shell: bash
         run: |
-          MODULE_PATH="${{ inputs.working_directory }}"
           echo "Files in plan directory:"
-          ls -lh "${{ github.workspace }}/${MODULE_PATH}/"
-          
-          if [ ! -f "${{ github.workspace }}/${MODULE_PATH}/tfplan" ]; then
+          ls -lh "${{ github.workspace }}/${{ inputs.working_directory }}/"
+
+          if [ ! -f "${{ github.workspace }}/${{ inputs.working_directory }}/tfplan" ]; then
             echo "ERROR: tfplan not found"
             exit 1
           fi
@@ -92,11 +85,6 @@ jobs:
           echo "Running Terraform Apply"
           echo "-------------------------------------"
           echo "Working Directory: ${MODULE_PATH}"
-
-          if [ ! -d "${MODULE_PATH}" ]; then
-            echo "Directory does not exist: ${MODULE_PATH}"
-            exit 1
-          fi
 
           podman run --rm \
             -v "${{ github.workspace }}:/workspace:Z" \
@@ -130,7 +118,6 @@ jobs:
             echo "|----------|-------|"
             echo "| Module | ${MODULE_NAME} |"
             echo "| Environment | ${ENVIRONMENT} |"
-            echo "| Plan Run ID | ${{ inputs.plan_run_id }} |"
             echo "| Status | Infrastructure Applied |"
             echo ""
             echo "Infrastructure changes applied successfully."
