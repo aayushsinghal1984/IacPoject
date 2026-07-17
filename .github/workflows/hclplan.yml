@@ -96,16 +96,41 @@ jobs:
                 -no-color \
                 -out=tfplan
 
-              echo 'Validate Plan'
-              terraform show tfplan > /dev/null
-
               echo 'Generate JSON Plan'
               terraform show -json tfplan > tfplan.json
+
+              echo 'Validate JSON'
+              test -f tfplan.json && echo 'tfplan.json created successfully'
             "
 
-          echo ""
-          echo "Plan completed successfully"
+      - name: Copy Plan Files to Artifact Staging
+        shell: bash
+        run: |
+          MODULE_PATH="${{ inputs.working_directory }}"
+          STAGING_DIR="${{ github.workspace }}/plan-artifacts"
+          mkdir -p "$STAGING_DIR"
 
+          # Files are in workspace because of volume mount
+          cp "${{ github.workspace }}/${MODULE_PATH}/tfplan"      "$STAGING_DIR/tfplan"
+          cp "${{ github.workspace }}/${MODULE_PATH}/tfplan.json" "$STAGING_DIR/tfplan.json"
+
+          echo "Files staged:"
+          ls -lh "$STAGING_DIR"
+
+      - name: Upload Plan Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ inputs.environment }}-${{ github.run_id }}
+          path: ${{ github.workspace }}/plan-artifacts/
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Job Summary
+        if: always()
+        shell: bash
+        run: |
+          MODULE_NAME="${{ inputs.working_directory }}"
+          ENVIRONMENT="${{ inputs.environment }}"
           {
             echo "# Terraform Plan Summary"
             echo ""
@@ -113,7 +138,10 @@ jobs:
             echo "|----------|-------|"
             echo "| Module | ${MODULE_NAME} |"
             echo "| Environment | ${ENVIRONMENT} |"
+            echo "| Artifact | tfplan-${ENVIRONMENT}-${{ github.run_id }} |"
             echo "| Status | Plan Generated |"
             echo ""
-            echo "Plan files generated successfully."
+            echo "Plan files generated and uploaded successfully."
+            echo "- \`tfplan\` → used by Terraform Apply"
+            echo "- \`tfplan.json\` → used by OPA policy evaluation"
           } >> "$GITHUB_STEP_SUMMARY"
