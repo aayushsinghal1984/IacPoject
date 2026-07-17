@@ -58,7 +58,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          MODULE_PATH="${{ inputs.working_directory }}/example"
+          MODULE_PATH="${{ inputs.working_directory }}"
           MODULE_NAME="${{ inputs.working_directory }}"
           ENVIRONMENT="${{ inputs.environment }}"
 
