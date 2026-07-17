@@ -110,7 +110,6 @@ jobs:
           STAGING_DIR="${{ github.workspace }}/plan-artifacts"
           mkdir -p "$STAGING_DIR"
 
-          # Files are in workspace because of volume mount
           cp "${{ github.workspace }}/${MODULE_PATH}/tfplan"      "$STAGING_DIR/tfplan"
           cp "${{ github.workspace }}/${MODULE_PATH}/tfplan.json" "$STAGING_DIR/tfplan.json"
 
@@ -120,7 +119,7 @@ jobs:
       - name: Upload Plan Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan-${{ inputs.environment }}-${{ github.run_id }}
+          name: tfplan-${{ inputs.environment }}
           path: ${{ github.workspace }}/plan-artifacts/
           retention-days: 7
           if-no-files-found: error
@@ -138,7 +137,7 @@ jobs:
             echo "|----------|-------|"
             echo "| Module | ${MODULE_NAME} |"
             echo "| Environment | ${ENVIRONMENT} |"
-            echo "| Artifact | tfplan-${ENVIRONMENT}-${{ github.run_id }} |"
+            echo "| Artifact | tfplan-${ENVIRONMENT} |"
             echo "| Status | Plan Generated |"
             echo ""
             echo "Plan files generated and uploaded successfully."
