@@ -76,9 +76,9 @@ jobs:
             -v "${{ github.workspace }}:/workspace:Z" \
             -w "/workspace/${MODULE_PATH}" \
             -e TF_TOKEN_app_terraform_io="${{ secrets.TF_API_TOKEN }}" \
-            -e ARM_CLIENT_ID="${{ secrets.AZURE_CLIENT_ID }}" \
-            -e ARM_TENANT_ID="${{ secrets.AZURE_TENANT_ID }}" \
-            -e ARM_SUBSCRIPTION_ID="${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            -e ARM_CLIENT_ID="${{ secrets.ARM_CLIENT_ID }}" \
+            -e ARM_TENANT_ID="${{ secrets.ARM_TENANT_ID }}" \
+            -e ARM_SUBSCRIPTION_ID="${{ secrets.ARM_SUBSCRIPTION_ID }}" \
             -e ARM_USE_OIDC=true \
             -e ARM_OIDC_TOKEN="${{ steps.oidc.outputs.oidc_token }}" \
             --entrypoint /bin/sh \
