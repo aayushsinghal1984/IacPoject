@@ -1,13 +1,16 @@
 name: HCL TFLint
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       environment:
         description: "Target deployment environment"
         required: true
-        type: string
-
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
       working_directory:
         description: "Terraform working directory"
         required: true
@@ -16,14 +19,29 @@ on:
 permissions:
   contents: read
   id-token: write
- 
+
 jobs:
   lint-tflint:
-    runs-on: ubuntu-latest
-    
+    runs-on: self-hosted
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GHUB_TOKEN }}" | podman login ghcr.io \
+            -u ${{ github.actor }} \
+            --password-stdin
+
+      - name: Pull Image (only if not present)
+        run: |
+          if ! podman image exists ghcr.io/aayushsinghal1984/ulseworkflowcontainer:latest; then
+            echo "Image not found locally, pulling..."
+            podman pull ghcr.io/aayushsinghal1984/ulseworkflowcontainer:latest
+          else
+            echo "Image already exists locally, skipping pull."
+          fi
 
       - name: Run TFLint
         shell: bash
@@ -31,20 +49,20 @@ jobs:
           set -e
           MODULE_PATH="${{ inputs.working_directory }}"
           echo "Working Directory: $MODULE_PATH"
+
           if [ ! -d "$MODULE_PATH" ]; then
             echo "Directory does not exist: $MODULE_PATH"
             exit 1
           fi
 
-          docker run --rm \
-            -v ${{ github.workspace }}:/workspace:Z \
+          podman run --rm \
+            -v "${{ github.workspace }}:/workspace:Z" \
             --entrypoint /bin/sh \
-            ghcr.io/terraform-linters/tflint:v0.59.1 \
+            ghcr.io/aayushsinghal1984/ulseworkflowcontainer:latest \
             -c "
-            cd /workspace/$MODULE_PATH
+            cd /workspace/${MODULE_PATH}
             echo 'Current Directory:'
             pwd
-
             tflint --version
             echo 'Initializing Plugins...'
             tflint --init
@@ -53,7 +71,7 @@ jobs:
             "
 
           echo ""
-          echo 'TFLint completed successfully'
+          echo "TFLint completed successfully"
           {
             echo "# TFLint Summary"
             echo ""

@@ -1,12 +1,16 @@
 name: HCL Tf Validate
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       environment:
         description: "Target deployment environment"
         required: true
-        type: string
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
 
       working_directory:
         description: "Terraform working directory"
@@ -16,14 +20,29 @@ on:
 permissions:
   contents: read
   id-token: write
- 
+
 jobs:
   lint-tflint:
-    runs-on: ubuntu-latest
-    
+    runs-on: self-hosted
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GHUB_TOKEN }}" | podman login ghcr.io \
+            -u ${{ github.actor }} \
+            --password-stdin
+
+      - name: Pull Image (only if not present)
+        run: |
+          if ! podman image exists ghcr.io/aayushsinghal1984/ulseworkflowcontainer:latest; then
+            echo "Image not found locally, pulling..."
+            podman pull ghcr.io/aayushsinghal1984/ulseworkflowcontainer:latest
+          else
+            echo "Image already exists locally, skipping pull."
+          fi
 
       - name: Run Terraform Validate
         shell: bash
@@ -46,10 +65,10 @@ jobs:
             exit 1
           fi
 
-          docker run --rm \
+          podman run --rm \
             -v "${{ github.workspace }}:/workspace:Z" \
             --entrypoint /bin/sh \
-            docker.io/hashicorp/terraform:1.13.0 \
+            ghcr.io/aayushsinghal1984/ulseworkflowcontainer:latest \
             -c "
             cd /workspace/${MODULE_PATH} && \
             terraform init -backend=false -input=false -no-color && \
