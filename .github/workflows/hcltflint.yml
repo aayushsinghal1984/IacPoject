@@ -1,4 +1,4 @@
-name: Terraform TFLint
+name: HCL TFLint
 
 on:
   workflow_call:
