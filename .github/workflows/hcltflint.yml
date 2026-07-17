@@ -1,0 +1,67 @@
+name: Terraform TFLint
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        type: string
+
+      working_directory:
+        description: "Terraform working directory"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+ 
+jobs:
+  lint-tflint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run TFLint
+        shell: bash
+        run: |
+          set -e
+          MODULE_PATH="${{ inputs.working_directory }}"
+          echo "Working Directory: $MODULE_PATH"
+          if [ ! -d "$MODULE_PATH" ]; then
+            echo "Directory does not exist: $MODULE_PATH"
+            exit 1
+          fi
+
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace:Z \
+            --entrypoint /bin/sh \
+            ghcr.io/terraform-linters/tflint:v0.59.1 \
+            -c "
+            cd /workspace/$MODULE_PATH
+            echo 'Current Directory:'
+            pwd
+
+            tflint --version
+            echo 'Initializing Plugins...'
+            tflint --init
+            echo 'Running TFLint...'
+            tflint --format compact
+            "
+
+          echo ""
+          echo 'TFLint completed successfully'
+          {
+            echo "# TFLint Summary"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| Module | $MODULE_PATH |"
+            echo "| Environment | ${{ inputs.environment }} |"
+            echo "| Status | Passed |"
+            echo ""
+            echo "TFLint completed successfully with no blocking issues."
+          } >> $GITHUB_STEP_SUMMARY
