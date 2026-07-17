@@ -1,0 +1,73 @@
+name: HCL Tf Validate
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        type: string
+
+      working_directory:
+        description: "Terraform working directory"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+ 
+jobs:
+  lint-tflint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run Terraform Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MODULE_PATH="${{ inputs.working_directory }}"
+          MODULE_NAME="${{ inputs.working_directory }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+
+          echo "=========================================="
+          echo "Running Terraform Validate"
+          echo "=========================================="
+          echo "Module       : ${MODULE_NAME}"
+          echo "Environment  : ${ENVIRONMENT}"
+          echo "Path         : ${MODULE_PATH}"
+
+          if [ ! -d "${MODULE_PATH}" ]; then
+            echo "Directory does not exist: ${MODULE_PATH}"
+            exit 1
+          fi
+
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace:Z" \
+            --entrypoint /bin/sh \
+            docker.io/hashicorp/terraform:1.13.0 \
+            -c "
+            cd /workspace/${MODULE_PATH} && \
+            terraform init -backend=false -input=false -no-color && \
+            terraform validate
+            "
+
+          {
+            echo "# Terraform Validate Summary"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| Module | ${MODULE_NAME} |"
+            echo "| Environment | ${ENVIRONMENT} |"
+            echo "| Validation Type | Terraform Validate |"
+            echo "| Status | Passed |"
+            echo ""
+            echo "Validation completed successfully."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo ""
+          echo "Validation completed successfully"
