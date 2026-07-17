@@ -29,11 +29,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Podman
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y podman
-
       - name: Login to GHCR
         run: |
           echo "${{ secrets.GHUB_TOKEN }}" | podman login ghcr.io \
